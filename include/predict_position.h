@@ -1,4 +1,5 @@
 #include <Eigen/Core>
+// predict position of each particle before applying all forces
 
 // Inputs:
 // x position of particle 

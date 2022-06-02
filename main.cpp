@@ -20,6 +20,15 @@ int main(int argc, char *argv){
   // Plot the mesh
   igl::opengl::glfw::Viewer viewer;
   viewer.data().set_points(V, C);
+  viewer.callback_pre_draw = [&](igl::opengl::glfw::Viewer & )->bool
+  {
+    // Create animation here
+
+    
+    // update point location. no .clear() necessary
+    viewer.data().set_points(V,C);
+    return false;
+  };
   viewer.launch();
 
     //input list of positions
