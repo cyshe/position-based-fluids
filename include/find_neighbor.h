@@ -6,6 +6,6 @@
 // N neighbors
 
 void find_neighbor(
-    const Eigen::MatrixXd x;
-    Eigen::MatrixXd N;
+    const Eigen::MatrixXd x,
+    Eigen::MatrixXd N
 );
