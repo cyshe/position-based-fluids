@@ -1,12 +1,14 @@
-#include<iostream>
+#include "animate_fluids.h"
+#include <iostream>
 #include <igl/opengl/glfw/Viewer.h>
-
-//#include<Eigen/Core>
+#include <Eigen/Core>
 
 int main(int argc, char *argv){
 
-    // Inline mesh of a cube
-  const Eigen::MatrixXd V= (Eigen::MatrixXd(8,3)<<
+  igl::opengl::glfw::Viewer viewer;
+
+  //initial conditions
+  Eigen::MatrixXd V= (Eigen::MatrixXd(8,3)<<
     0.0,0.0,0.0,
     0.0,0.0,1.0,
     0.0,1.0,0.0,
@@ -16,17 +18,27 @@ int main(int argc, char *argv){
     1.0,1.0,0.0,
     1.0,1.0,1.0).finished();
 
-  const Eigen::MatrixXd C = (Eigen::MatrixXd(1,3) << 0, 0, 1.0).finished();
-  // Plot the mesh
-  igl::opengl::glfw::Viewer viewer;
+  Eigen::MatrixXd C = (Eigen::MatrixXd(1,3) << 0, 0, 1.0).finished();
+  int iters = 10;
+  
+  /*
+  const auto update = [&]()
+  {
+    viewer.data().set_points(V, C);
+  };
+*/
+  const auto step = [&]()
+  {
+    // animation
+    animate_fluids(V, iters);
+    viewer.data().set_points(V, C);
+  };
+
   viewer.data().set_points(V, C);
   viewer.callback_pre_draw = [&](igl::opengl::glfw::Viewer & )->bool
   {
-    // Create animation here
 
-    
-    // update point location. no .clear() necessary
-    viewer.data().set_points(V,C);
+    step();
     return false;
   };
   viewer.launch();
