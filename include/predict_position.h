@@ -8,5 +8,5 @@
 void predict_position(
     Eigen::MatrixXd &x, 
     Eigen::MatrixXd &v,
-    const Eigen::MatrixXd f_ext,
+    const Eigen::MatrixXd &f_ext,
     const double dt);

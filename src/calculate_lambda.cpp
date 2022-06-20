@@ -1,9 +1,10 @@
 #include "calculate_lambda.h"
+#include <Eigen/Core>
 
 void calculate_lambda(
-    const Eigen::MatrixXd x,
-    const Eigen::MatrixXd N,
-    Eigen::VectorXd lambda,
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXd & N,
+    Eigen::VectorXd & lambda,
     const double h,
     const double rho_0
     ){

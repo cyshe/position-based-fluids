@@ -3,12 +3,12 @@
 #include <set>
 #include <tuple>
 
-void find_neighbor(const Eigen::MatrixXd x, 
+void find_neighbor(const Eigen::MatrixXd & x, 
     const Eigen::Vector3d lower_bound,
     const Eigen::Vector3d upper_bound, 
     const double cell_size,
     const int numofparticles,
-    Eigen::MatrixXd N){
+    Eigen::MatrixXd & N){
     
     std::map<std::tuple<int, int, int>, std::set<int>> cells;
     N.setZero();
