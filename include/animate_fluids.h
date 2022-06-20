@@ -8,6 +8,6 @@ void animate_fluids(
     const Eigen::Vector3d & low_bound,
     const Eigen::Vector3d & up_bound,
     const int numofparticles,
-    const double iters, 
+    const int iters, 
     const double dt
 );

@@ -1,7 +1,8 @@
+#include "forces.h"
 #include "predict_position.h"
 #include "animate_fluids.h"
 #include "find_neighbor.h"
-#include "forces.h"
+
 #include <Eigen/Core>
 #include <iostream>
 
@@ -12,7 +13,7 @@ void animate_fluids(
     const Eigen::Vector3d & low_bound,
     const Eigen::Vector3d & up_bound,
     const int numofparticles,
-    const double iters, 
+    const int iters, 
     const double dt
     ){
 

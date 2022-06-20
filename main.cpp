@@ -9,7 +9,7 @@ int main(int argc, char *argv){
 
   
   //initial conditions
-  int numofparticles = 100;
+  int numofparticles = 1000;
   Eigen::Vector3d lower_bound;
   Eigen::Vector3d upper_bound;
 

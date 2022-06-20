@@ -24,7 +24,7 @@ void forces(
     lambda.resize(numofparticles);
     lambda.setZero();
     calculate_lambda(X, N, lambda, h, rho_0);
-    calculate_delta_p(delta_p, X, lambda, rho_0);
+    calculate_delta_p(delta_p, X, N, lambda, rho_0, numofparticles, h);
     X = X + delta_p;
 
 
