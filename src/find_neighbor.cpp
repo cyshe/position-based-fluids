@@ -2,6 +2,7 @@
 #include <map>
 #include <set>
 #include <tuple>
+#include <iostream>
 
 void find_neighbor(const Eigen::MatrixXd & x, 
     const Eigen::Vector3d lower_bound,
@@ -16,7 +17,9 @@ void find_neighbor(const Eigen::MatrixXd & x,
     int grid_x, grid_y, grid_z; //x, y, z of grid coord
 
 
-    //form grid
+    // form grid
+    // add each particle to its corresponding grid cell, if the cell doesn't exist add cell
+
     for (int i = 0; i < x.rows(); i++){
         //
         grid_x = round((x(i,0) - lower_bound(0))/cell_size);
@@ -29,6 +32,13 @@ void find_neighbor(const Eigen::MatrixXd & x,
         }
 
         cells[grid_coord].insert(i);
+
+        //std::cout << std::get<0>(grid_coord) << std::get<1>(grid_coord) << std::get<2>(grid_coord) << std::endl;
+        
+        for (auto it=cells[grid_coord].begin(); it != cells[grid_coord].end(); ++it) {
+          //  std::cout <<  *it << std::endl;
+        }
+
     }
 
 
@@ -38,9 +48,9 @@ void find_neighbor(const Eigen::MatrixXd & x,
     for (grid_x = 0; grid_x < ceil((upper_bound(0) - lower_bound(0))/cell_size); grid_x ++){
         for (grid_y = 0; grid_y < ceil((upper_bound(1) - lower_bound(1))/cell_size); grid_y ++){
             for (grid_z = 0; grid_z < ceil((upper_bound(2) - lower_bound(2))/cell_size); grid_z++){
+               
                 grid_coord = std::make_tuple(grid_x, grid_y, grid_z);
-                
-
+            
                 //check there are particles in this cell
                 if (cells.find(grid_coord) != cells.end()){ 
                     

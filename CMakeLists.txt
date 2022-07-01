@@ -16,9 +16,9 @@ include_directories(${LIBIGL_INCLUDE_DIR})
 
 #include source code
 file(GLOB H_FILES ${PROJECT_SOURCE_DIR}/include/*.h)
-#file(GLOB H_SHARED_FILES ${PROJECT_SOURCE_DIR}/shared/include/*.h)
+file(GLOB H_SHARED_FILES ${PROJECT_SOURCE_DIR}/shared/include/*.h)
 file(GLOB CPP_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
-#file(GLOB CPP_SHARED_FILES ${PROJECT_SOURCE_DIR}/shared/src/*.cpp)
+file(GLOB CPP_SHARED_FILES ${PROJECT_SOURCE_DIR}/shared/src/*.cpp)
 
 #build executable 
 add_executable(${PROJECT_NAME} main.cpp ${H_FILES} ${CPP_FILES})

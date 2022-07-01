@@ -9,19 +9,23 @@ int main(int argc, char *argv){
 
   
   //initial conditions
-  int numofparticles = 1000;
+  int numofparticles = 100;
   Eigen::Vector3d lower_bound;
   Eigen::Vector3d upper_bound;
 
-  lower_bound << -2.0, -2.0, -3.0;
+  lower_bound << -3.0, -3.0, -3.0;
   upper_bound << 2.0, 2.0, 2.0; 
 
-  Eigen::MatrixXd q = Eigen::MatrixXd::Random(numofparticles, 3);
+  Eigen::MatrixXd q;
+  q.resize(numofparticles, 3);
+  q.setRandom();
   
-  
+
   Eigen::MatrixXd q_dot;
-  q_dot.resize(q.rows(), 3);
+  q_dot.resize(numofparticles, 3);
   q_dot.setZero();
+
+  //std::cout << q << std::endl;
 
   Eigen::MatrixXd N;
   N.resize(numofparticles, numofparticles);
@@ -34,9 +38,45 @@ int main(int argc, char *argv){
   /*
   const auto update = [&]()
   {
-    viewer.data().set_points(X, C);
+    viewer.data().set_points(q, C);
   };
-*/
+  */
+  Eigen::MatrixXd V_bound;
+    V_bound.resize(12, 3);
+    V_bound << 2.0, 1.0, 2.0,
+             2.0, 1.0, -2.0,
+            -2.0, 1.0, -2.0,
+            -2.0, 1.0, 2.0,
+             0.0, 0.0, 0.0,
+             1.8,-2.5, -1.8,
+            -1.8,-2.5, -1.8,
+            -1.8,-2.5, 1.8,
+             2.0,-3.0,  2.0,
+             2.0,-3.0, -2.0,
+            -2.0,-3.0, -2.0,
+            -2.0,-3.0,  2.0;
+  
+    Eigen::MatrixXi F_bound = (Eigen::MatrixXi(20, 3) << 1, 2, 5,
+            2, 6, 5,
+            2, 3, 6,
+            3, 7, 6,
+            3, 4, 7,
+            4, 8, 7,
+            4, 1, 8,
+            1, 5, 8,
+            2, 1, 9,
+            2, 9, 10,
+            3, 2, 10,
+            3, 10, 11,
+            4, 3, 12,
+            3, 11, 12,
+            4, 12, 9,
+            4, 9, 1,
+            6, 7, 8,
+            5, 6, 8,
+            9, 12, 11,
+            9, 11, 10).finished().array()-1;
+  
   const auto step = [&]()
   {
     // animation
@@ -44,13 +84,16 @@ int main(int argc, char *argv){
     viewer.data().set_points(q, C);
   };
 
-  viewer.data().set_points(q,C);
-  viewer.core().is_animating = false;
+  
+ // viewer.core().is_animating = false;
+
   viewer.callback_pre_draw = [&](igl::opengl::glfw::Viewer & )->bool
   {
     step();
     return false;
   };
+  viewer.data().set_points(q,C);
+  viewer.data().set_mesh(V_bound, F_bound);
   viewer.launch();
 
     //input list of positions

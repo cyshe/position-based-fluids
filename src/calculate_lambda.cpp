@@ -35,11 +35,12 @@ double C(const Eigen::MatrixXd x,
     const double rho_0,
     const int i,
     const double h){
+
     double rho_i = 0.0;
+
     for (int j = 0; j < x.rows(); j++){
         if (N(i, j) == 1){
-            rho_i += 0;
-            //rho_i += W((x(i) - x(j)), h);
+            rho_i += W((x.row(i) - x.row(j)), h);
         }
     }
     return rho_i/rho_0 - 1.0;
@@ -55,13 +56,13 @@ double grad_C_squared(const Eigen::MatrixXd x,
         Eigen::Vector3d sum_j;
         if (k == i){
             for (int j = 0; j < x.rows(); j++){
-                //sum_j += 45 * pow(h - ((x(i) -x(j)).norm()), 2) / (3.14 * pow(h, 6)) * x(k);
+                sum_j += 45 * pow(h - ((x.row(i) -x.row(j)).norm()), 2) / (3.14 * pow(h, 6)) * x.row(k);
             }
             sum_j = sum_j/rho_0;
             sum_k += pow(sum_j.norm(), 2);
         }
         else{
-            //sum_k += pow((-45 * pow(h - (x(i) - x(k)).norm(), 2) / (3.14 * rho_0 * pow(h, 6)) * x(k)).norm, 2);
+            sum_k += pow((-45 * pow(h - (x.row(i) - x.row(k)).norm(), 2) / (3.14 * rho_0 * pow(h, 6)) * x.row(k)).norm(), 2);
         }
     }
     return sum_k;
