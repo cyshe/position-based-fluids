@@ -2,6 +2,7 @@
 #include "predict_position.h"
 #include "animate_fluids.h"
 #include "find_neighbor.h"
+#include "energy_refinement.h"
 
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
@@ -19,6 +20,10 @@ void animate_fluids(
     ){
         
     double cell_size = 0.1;
+
+    Eigen::MatrixXd X_star;
+    X_star.resize(numofparticles, 3);
+    X_star = X;
 
     Eigen::MatrixXd f_ext;
     f_ext.resize(X.rows(), 3);
@@ -78,32 +83,42 @@ void animate_fluids(
             9, 11, 10).finished().array()-1;
 
     
-    predict_position(X, V, f_ext, dt);
+    predict_position(X_star, V, f_ext, dt);
     
-    //add constraint t0 solver V
-    igl::signed_distance(X,V_bound, F_bound,type,S,I,C,Normals);
     
-    for (int i = 0; i < numofparticles; i++){
-        if (S(i) < 0){
-            X(i, 0) = C(i, 0);
-            X(i, 1) = C(i, 1);
-            X(i, 2) = C(i, 2);
-
-            //Eigen::Vector3d v_i = V.row(i);
-            //V.row(i) = V.row(i) - (V.row(i).dot(N.row(i).transpose()) * N.row(i));
-        }
-    }
     
-    find_neighbor(X, low_bound, up_bound, cell_size, numofparticles, N);
+    
+    find_neighbor(X_star, low_bound, up_bound, cell_size, numofparticles, N);
 
     //std::cout << N << std::endl << std::endl << std::endl;
 
     for (int i = 0; i < iters; i++){
-        forces(X, N, V, numofparticles);
-        
-        //energy_refinement();
-        
+        forces(X_star, N, numofparticles);
     }
+
+    V = (X_star - X)/dt;
+    energy_refinement(X_star, V, numofparticles, 0.15, dt);
+
+
+
+    igl::signed_distance(X_star, V_bound, F_bound,type,S,I,C,Normals);
+    
+    //add constraint to solver V
+    for (int i = 0; i < numofparticles; i++){
+        if (S(i) <= 0){
+            X_star(i, 0) = C(i, 0);
+            X_star(i, 1) = C(i, 1);
+            X_star(i, 2) = C(i, 2);
+
+            //Eigen::Vector3d v_i = V.row(i);
+            V.row(i) = V.row(i) - (V.row(i).dot(N.row(i).transpose()) * N.row(i));
+        }
+    }
+
+    
+
+    X = X_star;
+
     //std::cout << "forces" << X.row(0) << std::endl;
     return;
 }

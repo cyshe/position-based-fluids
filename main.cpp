@@ -13,13 +13,14 @@ int main(int argc, char *argv){
   Eigen::Vector3d lower_bound;
   Eigen::Vector3d upper_bound;
 
-  lower_bound << -3.0, -3.0, -3.0;
-  upper_bound << 2.0, 2.0, 2.0; 
+  lower_bound << -6.0, -6.0, -6.0;
+  upper_bound << 6.0, 6.0, 6.0; 
 
   Eigen::MatrixXd q;
   q.resize(numofparticles, 3);
   q.setRandom();
-  
+  q =  q * 1.1;
+
 
   Eigen::MatrixXd q_dot;
   q_dot.resize(numofparticles, 3);
