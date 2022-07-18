@@ -114,9 +114,9 @@ void animate_fluids(
     }
 */
     for (int i = 0; i < numofparticles; i++){
-        if (X_star(i, 1) < -1){
+        if (X_star(i, 1) < -1.5){
             V(i, 1) = 0;
-            X_star(i,1) = -1;
+            X_star(i,1) = -1.5;
         }
         /*
         if (X_star(i, 0) < -1.5){

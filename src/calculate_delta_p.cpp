@@ -22,7 +22,7 @@ void calculate_delta_p(
         sum.setZero();
 
         for (int j = 0; j < numofparticles; j++){
-            if ((X.row(i) -X.row(j)).norm() <= h && i != j && N(i,j) == 1){    //N(i,j) == 1
+            if ((X.row(i) -X.row(j)).norm() <= h && i != j){    //N(i,j) == 1
                 Eigen::Vector3d r;
                 double s_corr;
                 r  = X.row(i) - X.row(j);

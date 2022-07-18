@@ -21,7 +21,7 @@ void calculate_lambda(
         grad_c = grad_C_squared(x, N, rho_0, i, h);
         
         lambda(i) = -c/(grad_c + 0.001);
-        // std::cout << "c " << c  << " grad_c "<< grad_c << std::endl;
+        //std::cout << "c " << c  << " grad_c "<< grad_c << std::endl;
     }
     
 }
@@ -45,7 +45,7 @@ double C(const Eigen::MatrixXd x,
     double rho_i = 0.0;
 
     for (int j = 0; j < x.rows(); j++){
-        if ((x.row(i) -x.row(j)).norm() <= h ){ // && i != j
+        if ((x.row(i) -x.row(j)).norm() <= h && i != j){ // 
             //std::cout << "$" << std::endl;
             rho_i += W((x.row(i) - x.row(j)), h);  //40 is mass of each particle
         }

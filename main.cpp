@@ -36,7 +36,7 @@ int main(int argc, char *argv){
   Eigen::MatrixXd C = (Eigen::MatrixXd(1,3) << 0, 0, 1.0).finished();
   
   int iters = 3;
-  double dt = 0.01;
+  double dt = 0.1;
 
   /*
   const auto update = [&]()
