@@ -1,5 +1,9 @@
 #include "calculate_lambda.h"
+#include <iostream>
 #include <Eigen/Core>
+
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 void calculate_lambda(
     const Eigen::MatrixXd & x,
@@ -15,15 +19,17 @@ void calculate_lambda(
     for (int i = 0; i < x.rows(); i++){
         c = C(x, N, rho_0, i, h);
         grad_c = grad_C_squared(x, N, rho_0, i, h);
-        lambda(i) = -c/grad_c;
+        
+        lambda(i) = -c/(grad_c + 0.001);
+        // std::cout << "c " << c  << " grad_c "<< grad_c << std::endl;
     }
     
 }
 
-double W(const Eigen::Vector3d r, const double h){
+double W(const Eigen::Vector3d r, const double h){ //poly 6 kernel
     double l = r.norm();
-    if (l <= 5){ //l <=d
-        return 315 * pow(pow(h, 2) - pow(l,2), 3)/ (64 * 3.14 * pow(h,2));
+    if (l <= h){
+        return 315 * pow(pow(h, 2) - pow(l,2), 3)/ (64 * M_PI * pow(h,9));
     }
     else{
         return 0.0;
@@ -39,8 +45,9 @@ double C(const Eigen::MatrixXd x,
     double rho_i = 0.0;
 
     for (int j = 0; j < x.rows(); j++){
-        if (N(i, j) == 1){
-            rho_i += W((x.row(i) - x.row(j)), h);
+        if ((x.row(i) -x.row(j)).norm() <= h ){ // && i != j
+            //std::cout << "$" << std::endl;
+            rho_i += W((x.row(i) - x.row(j)), h);  //40 is mass of each particle
         }
     }
     return rho_i/rho_0 - 1.0;
@@ -53,16 +60,23 @@ double grad_C_squared(const Eigen::MatrixXd x,
     const double h){
     double sum_k = 0;
     for (int k = 0; k < x.rows(); k++){
-        Eigen::Vector3d sum_j;
+        Eigen::Vector3d grad_c;
+        grad_c.setZero();
         if (k == i){
             for (int j = 0; j < x.rows(); j++){
-                sum_j += 45 * pow(h - ((x.row(i) -x.row(j)).norm()), 2) / (3.14 * pow(h, 6)) * x.row(k);
+                if ((x.row(i) -x.row(j)).norm() <= h && i != j){ //  && N(i,j) == 1 
+                    grad_c += 45 * pow(h - ((x.row(i) -x.row(j)).norm()), 2) / (M_PI * pow(h, 6)) * (x.row(i) -x.row(j)) /(x.row(i) -x.row(j)).norm();
+                }
             }
-            sum_j = sum_j/rho_0;
-            sum_k += pow(sum_j.norm(), 2);
+            grad_c = grad_c/rho_0;
+            sum_k += pow(grad_c.norm(), 2);
         }
         else{
-            sum_k += pow((-45 * pow(h - (x.row(i) - x.row(k)).norm(), 2) / (3.14 * rho_0 * pow(h, 6)) * x.row(k)).norm(), 2);
+            if ((x.row(i) -x.row(k)).norm() <= h && i != k){ // && N(i,k) == 1
+                grad_c += 45 * pow(h - (x.row(i) - x.row(k)).norm(), 2) / (M_PI * pow(h, 6)) * (x.row(i) -x.row(k))/(x.row(i) -x.row(k)).norm();
+            }
+            grad_c = grad_c/rho_0;
+            sum_k += pow(grad_c.norm(), 2);
         }
     }
     return sum_k;

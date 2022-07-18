@@ -31,9 +31,9 @@ void animate_fluids(
     for (int i = 0; i < X.rows(); i++){
         f_ext(i,1) = -9.8;
     }
-
+    std::cout << "X* " << X_star.row(65) << std::endl;
     //collision detection
-    
+/*
     igl::SignedDistanceType type = igl::SIGNED_DISTANCE_TYPE_PSEUDONORMAL;
     
     Eigen::VectorXd S;
@@ -52,14 +52,14 @@ void animate_fluids(
              2.0, 1.0, -2.0,
             -2.0, 1.0, -2.0,
             -2.0, 1.0, 2.0,
-             0.0, 0.0, 0.0,
+             1.8,-2.5, 1.8,
              1.8,-2.5, -1.8,
             -1.8,-2.5, -1.8,
             -1.8,-2.5, 1.8,
-             2.0,-3.0,  2.0,
-             2.0,-3.0, -2.0,
-            -2.0,-3.0, -2.0,
-            -2.0,-3.0,  2.0;
+             3.0,-4.0,  3.0,
+             3.0,-4.0, -3.0,
+            -3.0,-4.0, -3.0,
+            -3.0,-4.0,  3.0;
   
     Eigen::MatrixXi F_bound = (Eigen::MatrixXi(20, 3) << 1, 2, 5,
             2, 6, 5,
@@ -81,26 +81,24 @@ void animate_fluids(
             5, 6, 8,
             9, 12, 11,
             9, 11, 10).finished().array()-1;
-
+*/
     
     predict_position(X_star, V, f_ext, dt);
-    
+    std::cout << "predict_pos" << X_star.row(65) << std::endl;
     
     
     
     find_neighbor(X_star, low_bound, up_bound, cell_size, numofparticles, N);
-
     //std::cout << N << std::endl << std::endl << std::endl;
 
     for (int i = 0; i < iters; i++){
         forces(X_star, N, numofparticles);
     }
 
+
     V = (X_star - X)/dt;
-    energy_refinement(X_star, V, numofparticles, 0.15, dt);
-
-
-
+    //energy_refinement(X_star, V, numofparticles, 0.15, dt);
+/*
     igl::signed_distance(X_star, V_bound, F_bound,type,S,I,C,Normals);
     
     //add constraint to solver V
@@ -114,11 +112,34 @@ void animate_fluids(
             V.row(i) = V.row(i) - (V.row(i).dot(N.row(i).transpose()) * N.row(i));
         }
     }
+*/
+    for (int i = 0; i < numofparticles; i++){
+        if (X_star(i, 1) < -1){
+            V(i, 1) = 0;
+            X_star(i,1) = -1;
+        }
+        /*
+        if (X_star(i, 0) < -1.5){
+            V(i, 0) = abs(V(i, 0));
+        }
 
-    
+         if (X_star(i, 0) > 1.5){
+            V(i, 0) = -abs(V(i, 0));
+        }
+
+        if (X_star(i, 2) < -1.5){
+            V(i, 2) = abs(V(i, 2));
+        }
+
+         if (X_star(i, 0) > 1.5){
+            V(i, 2) = -abs(V(i, 2));
+        }*/
+    }
+
+
 
     X = X_star;
 
-    //std::cout << "forces" << X.row(0) << std::endl;
+    std::cout <<  X.row(65) << std::endl;
     return;
 }

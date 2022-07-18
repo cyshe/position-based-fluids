@@ -25,10 +25,10 @@ void forces(
     lambda.resize(numofparticles);
     lambda.setZero();
     calculate_lambda(X, N, lambda, h, rho_0);
-    //std::cout << lambda << std::endl;
-    calculate_delta_p(delta_p, X, N, lambda, rho_0, numofparticles, h);
+    std::cout << "lambda "<< lambda(65) << std::endl;
+    calculate_delta_p(delta_p, X, N, lambda, rho_0, numofparticles, h, 0.1);
     
-    //std::cout << delta_p << std::endl;
+    std::cout << "delta_p "<< delta_p(65)<< std::endl;
 
     X = X + delta_p;
 
