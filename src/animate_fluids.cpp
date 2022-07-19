@@ -114,32 +114,36 @@ void animate_fluids(
     }
 */
     for (int i = 0; i < numofparticles; i++){
-        if (X_star(i, 1) < -1.5){
+        if (X_star(i, 1) < -0.5){
             V(i, 1) = 0;
-            X_star(i,1) = -1.5;
+            X_star(i,1) = -0.5;
         }
-        /*
-        if (X_star(i, 0) < -1.5){
-            V(i, 0) = abs(V(i, 0));
-        }
-
-         if (X_star(i, 0) > 1.5){
-            V(i, 0) = -abs(V(i, 0));
+        
+        if (X_star(i, 0) < -1.0){
+            V(i, 0) = 0.8 *abs(V(i, 0));
+            X_star(i,0) = -1.0;
         }
 
-        if (X_star(i, 2) < -1.5){
-            V(i, 2) = abs(V(i, 2));
+        if (X_star(i, 0) > 1.0){
+            V(i, 0) = -0.8 *abs(V(i, 0));
+            X_star(i,0) = 1.0;
         }
 
-         if (X_star(i, 0) > 1.5){
-            V(i, 2) = -abs(V(i, 2));
-        }*/
+        if (X_star(i, 2) < -1.0){
+            V(i, 2) = 0.8 * abs(V(i, 2));
+            X_star(i,2) = -1.0;
+        }
+
+        if (X_star(i, 2) > 1.0){
+            V(i, 2) = -0.8 * abs(V(i, 2));
+            X_star(i,2) = 1.0;
+        }   
     }
 
 
 
     X = X_star;
 
-    std::cout <<  X.row(65) << std::endl;
+    std::cout <<  X.row(158) << std::endl;
     return;
 }

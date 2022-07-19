@@ -35,7 +35,7 @@ void calculate_delta_p(
                     s_corr = 0.0;
                 }
 
-                sum += (lambda(i) + lambda(j) + s_corr) * 45 * pow(h - r.norm(), 2)/ (M_PI * pow(h,6)) * r/r.norm();
+                sum += (lambda(i) + lambda(j)) * 45 * pow(h - r.norm(), 2)/ (M_PI * pow(h,6)) * r/r.norm(); //+ s_corr
                 
             }
         }

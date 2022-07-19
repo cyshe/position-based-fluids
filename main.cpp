@@ -4,6 +4,7 @@
 #include <igl/writeOBJ.h>
 #include <Eigen/Core>
 #include <sstream>
+#include <cmath>
 
 int main(int argc, char *argv){
 
@@ -11,7 +12,7 @@ int main(int argc, char *argv){
 
   
   //initial conditions
-  int numofparticles = 200;
+  int numofparticles = 216;
   Eigen::Vector3d lower_bound;
   Eigen::Vector3d upper_bound;
 
@@ -20,8 +21,13 @@ int main(int argc, char *argv){
 
   Eigen::MatrixXd q;
   q.resize(numofparticles, 3);
-  q.setRandom();
-  q =  q * 0.5;
+  q.setZero();
+  for (int i = 0; i < 216; i++){
+    q(i, 0) = 0.04 * (i%6);
+    q(i, 1) = 0.04 * (int(floor(i/6.0)) % 6);
+    q(i, 2) = 0.04 * floor(i/36);
+  }
+  //q =  q * 0.5;
 
 
   Eigen::MatrixXd q_dot;
@@ -36,7 +42,7 @@ int main(int argc, char *argv){
   Eigen::MatrixXd C = (Eigen::MatrixXd(1,3) << 0, 0, 1.0).finished();
   
   int iters = 3;
-  double dt = 0.1;
+  double dt = 0.10;
 
   /*
   const auto update = [&]()
