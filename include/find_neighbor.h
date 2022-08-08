@@ -8,10 +8,10 @@
 // N neighbors
 
 void find_neighbor(
-    const Eigen::MatrixXd & x, 
+    const Eigen::MatrixXd & X, 
     const Eigen::Vector3d lower_bound,
     const Eigen::Vector3d upper_bound, 
     const double cell_size,
     const int numofparticles,
-    Eigen::MatrixXd & N
+    Eigen::MatrixXi & N
 );

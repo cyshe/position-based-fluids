@@ -12,7 +12,7 @@ int main(int argc, char *argv){
 
   
   //initial conditions
-  int numofparticles = 216;
+  int numofparticles = 1000;
   Eigen::Vector3d lower_bound;
   Eigen::Vector3d upper_bound;
 
@@ -22,10 +22,10 @@ int main(int argc, char *argv){
   Eigen::MatrixXd q;
   q.resize(numofparticles, 3);
   q.setZero();
-  for (int i = 0; i < 216; i++){
-    q(i, 0) = 0.04 * (i%6);
-    q(i, 1) = 0.04 * (int(floor(i/6.0)) % 6);
-    q(i, 2) = 0.04 * floor(i/36);
+  for (int i = 0; i < numofparticles; i++){
+    q(i, 0) = 0.1 * (i%10) - 0.5;
+    q(i, 1) = 0.1 * (int(floor(i/10.0)) % 10);
+    q(i, 2) = 0.1 * floor(i/100) -0.5;
   }
   //q =  q * 0.5;
 
@@ -36,8 +36,8 @@ int main(int argc, char *argv){
 
   //std::cout << q << std::endl;
 
-  Eigen::MatrixXd N;
-  N.resize(numofparticles, numofparticles);
+  Eigen::MatrixXi N;
+  N.resize(numofparticles, 30);
 
   Eigen::MatrixXd C = (Eigen::MatrixXd(1,3) << 0, 0, 1.0).finished();
   
@@ -50,6 +50,7 @@ int main(int argc, char *argv){
     viewer.data().set_points(q, C);
   };
   */
+ /*
   Eigen::MatrixXd V_bound;
     V_bound.resize(12, 3);
     V_bound << 2.0, 1.0, 2.0,
@@ -84,21 +85,21 @@ int main(int argc, char *argv){
             6, 7, 8,
             5, 6, 8,
             9, 12, 11,
-            9, 11, 10).finished().array()-1;
+            9, 11, 10).finished().array()-1;*/
   int frame = 0;
   Eigen::MatrixXd F;
 
   const auto step = [&]()
   {
-    // animation
-    animate_fluids(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    viewer.data().set_points(q, C);
-    
     std::stringstream buffer;
     buffer << "./Sequence/seq_" << std::setfill('0') << std::setw(3) << frame << ".obj";
     std::string file = buffer.str();
     std::cout << file << std::endl;
     igl::writeOBJ(file,q, F);
+    // animation
+    animate_fluids(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
+    viewer.data().set_points(q, C);
+
     frame ++;
   };
 

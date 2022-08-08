@@ -11,7 +11,7 @@
 void animate_fluids(
     Eigen::MatrixXd & X, 
     Eigen::MatrixXd & V, 
-    Eigen::MatrixXd & N,
+    Eigen::MatrixXi & N,
     const Eigen::Vector3d & low_bound,
     const Eigen::Vector3d & up_bound,
     const int numofparticles,
@@ -97,7 +97,7 @@ void animate_fluids(
 
 
     V = (X_star - X)/dt;
-    //energy_refinement(X_star, V, numofparticles, 0.15, dt);
+    energy_refinement(X_star, N, V, numofparticles, 0.2, dt);
 /*
     igl::signed_distance(X_star, V_bound, F_bound,type,S,I,C,Normals);
     
@@ -113,10 +113,16 @@ void animate_fluids(
         }
     }
 */
+
     for (int i = 0; i < numofparticles; i++){
-        if (X_star(i, 1) < -0.5){
-            V(i, 1) = 0;
-            X_star(i,1) = -0.5;
+       /* if (X_star(i, 0) < 0.8 &&  X_star(i, 1) > 1.0){
+            V(i, 0) = 0.5 *abs(V(i, 0));
+            X_star(i,0) = 0.8;
+        }*/
+        
+        if (X_star(i, 1) < -1.5){
+            V(i, 1) = 0.5 *abs(V(i, 1));
+            X_star(i,1) = -1.5;
         }
         
         if (X_star(i, 0) < -1.0){

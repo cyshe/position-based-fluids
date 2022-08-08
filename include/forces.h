@@ -3,6 +3,6 @@
 
 void forces(
     Eigen::MatrixXd & X,
-    Eigen::MatrixXd & N,
+    Eigen::MatrixXi & N,
     const int numofparticles
 );

@@ -8,7 +8,7 @@
 void calculate_delta_p(
     Eigen::MatrixXd & delta_p,
     const Eigen::MatrixXd & X,
-    const Eigen::MatrixXd & N,
+    const Eigen::MatrixXi & N,
     const Eigen::VectorXd & lambda,
     const double rho_0,
     const int numofparticles,
@@ -21,8 +21,9 @@ void calculate_delta_p(
         Eigen::Vector3d sum;
         sum.setZero();
 
-        for (int j = 0; j < numofparticles; j++){
-            if ((X.row(i) -X.row(j)).norm() <= h && i != j){    //N(i,j) == 1
+        for (int it = 0; it < 30; it++){
+            int j = N(i, it);
+            if ((X.row(i) -X.row(j)).norm() <= h && (X.row(i) -X.row(j)).norm() != 0){    //N(i,j) == 1
                 Eigen::Vector3d r;
                 double s_corr;
                 r  = X.row(i) - X.row(j);
@@ -35,7 +36,7 @@ void calculate_delta_p(
                     s_corr = 0.0;
                 }
 
-                sum += (lambda(i) + lambda(j)) * 45 * pow(h - r.norm(), 2)/ (M_PI * pow(h,6)) * r/r.norm(); //+ s_corr
+                sum += (lambda(i) + lambda(j)+ s_corr) * 45 * pow(h - r.norm(), 2)/ (M_PI * pow(h,6)) * r/r.norm(); //+ s_corr
                 
             }
         }

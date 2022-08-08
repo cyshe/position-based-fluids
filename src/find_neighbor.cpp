@@ -3,14 +3,44 @@
 #include <set>
 #include <tuple>
 #include <iostream>
+#include "igl/octree.h"
+#include "igl/knn.h"
 
-void find_neighbor(const Eigen::MatrixXd & x, 
+void find_neighbor(const Eigen::MatrixXd & X, 
     const Eigen::Vector3d lower_bound,
     const Eigen::Vector3d upper_bound, 
     const double cell_size,
     const int numofparticles,
-    Eigen::MatrixXd & N){
-    
+    Eigen::MatrixXi & N){
+
+
+    //build octtree
+    std::vector<std::vector<int > > O_PI;
+    Eigen::MatrixXi O_CH;
+    Eigen::MatrixXd O_CN;
+    Eigen::VectorXd O_W;
+    igl::octree(X,O_PI,O_CH,O_CN,O_W);
+
+    N.resize(X.rows(), 30);
+    igl::knn(X,30,O_PI,O_CH,O_CN,O_W,N);
+/*
+    for (int i = 0; i < X.rows(); i++){
+        for (int j = 0; j < 20; j++){
+            N(i, I(i, j)) = 1;
+        }
+    }
+*/
+
+
+
+
+
+
+
+
+
+
+/*
     std::map<std::tuple<int, int, int>, std::set<int>> cells;
     N.setZero();
     std::tuple<int, int, int> grid_coord;
@@ -88,6 +118,6 @@ void find_neighbor(const Eigen::MatrixXd & x,
                 }
             }
         }
-    }
+    }*/
     return;
 }
