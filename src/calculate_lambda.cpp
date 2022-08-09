@@ -16,16 +16,11 @@ void calculate_lambda(
     //rho_i = Sigma m_j * W(p_i-p_j,h)
     double c;
     double grad_c;
+    double epsilon = 100;
     for (int i = 0; i < x.rows(); i++){
         c = C(x, N, rho_0, i, h);
         grad_c = grad_C_squared(x, N, rho_0, i, h);
-        if (grad_c + 1000 == 0){
-            lambda(i) = -c/(grad_c + 9999);
-        }
-        else {
-            lambda(i) = -c/(grad_c + 10000);
-        }
-            
+        lambda(i) = -c / (grad_c + epsilon);
         //std::cout << "c " << c  << " grad_c "<< grad_c << std::endl;
     }
     
@@ -48,6 +43,7 @@ double C(const Eigen::MatrixXd x,
     const double h){
 
     double rho_i = 0.0;
+    double mass = 1.0; //0.037 * is mass of each particle
 /*
     for (int j = 0; j < x.rows(); j++){
         if ((x.row(i) -x.row(j)).norm() <= h && i != j){ // 
@@ -55,10 +51,10 @@ double C(const Eigen::MatrixXd x,
             rho_i += 0.037* W((x.row(i) - x.row(j)), h);  //0.037 * is mass of each particle
         }
     }*/
-    for (int it = 0; it < 30; it++){
+    for (int it = 0; it < N.cols(); it++){
         int j = N(i, it); 
         if ((x.row(i) -x.row(j)).norm()<= h && (x.row(i) -x.row(j)).norm() > 0){
-            rho_i += 0.037* W((x.row(i) - x.row(j)), h);  //0.037 * is mass of each particle
+            rho_i += mass* W((x.row(i) - x.row(j)), h);  
         }
     }
     return rho_i/rho_0 - 1.0;
@@ -70,37 +66,23 @@ double grad_C_squared(const Eigen::MatrixXd x,
     const int i,
     const double h){
     double sum_k = 0;
-    for (int k = 0; k < x.rows(); k++){
-        Eigen::Vector3d grad_c;
-        grad_c.setZero();
-        if (k == i){
-            /*
-            for (int j = 0; j < x.rows(); j++){
-                if ((x.row(i) -x.row(j)).norm() <= h && i != j){ //  && N(i,j) == 1 
-                    grad_c += 45 * pow(h - ((x.row(i) -x.row(j)).norm()), 2) / (M_PI * pow(h, 6)) * (x.row(i) -x.row(j)) /(x.row(i) -x.row(j)).norm();
-                }
-            }*/
-            for (int ij = 0; ij < 30; ij++){
-                int j = N(i, ij); 
 
-                //std::cout << "j " << j << "grad_c "<< grad_c << std::endl;
-                if ((x.row(i) -x.row(j)).norm()<= h && (x.row(i) -x.row(j)).norm() > 0){
-                    grad_c += 45 * pow(h - ((x.row(i) -x.row(j)).norm()), 2) / (M_PI * pow(h, 6)) * (x.row(i) -x.row(j)) /(x.row(i) -x.row(j)).norm();
-                }
-                
-            }
-            grad_c = grad_c/rho_0;
-            
-            sum_k += pow(grad_c.norm(), 2);
-        }
-        else{
-            if ((x.row(i) -x.row(k)).norm() <= h){ // && N(i,k) == 1
-                grad_c += 45 * pow(h - (x.row(i) - x.row(k)).norm(), 2) / (M_PI * pow(h, 6)) * (x.row(i) -x.row(k))/(x.row(i) -x.row(k)).norm();
-            }
-            grad_c = grad_c/rho_0;
-            sum_k += pow(grad_c.norm(), 2);
+    double fac = -45.0 / M_PI / std::pow(h,6);
+    Eigen::RowVector3d grad_i(0.0,0.0,0.0);
+
+    for (int ij = 0; ij < N.cols(); ij++) {
+        int j = N(i, ij);
+
+        double r = (x.row(i) -x.row(j)).norm();
+
+        if (r < h && r > 0) {
+            Eigen::RowVector3d grad_j = (fac * std::pow(h-r,2)
+                * (x.row(i) - x.row(j)) / r) / rho_0;
+
+            grad_i += grad_j;
+            sum_k += grad_j.squaredNorm();
         }
     }
-    //std::cout << sum_k << std::endl;
+    sum_k += grad_i.squaredNorm();
     return sum_k;
 }

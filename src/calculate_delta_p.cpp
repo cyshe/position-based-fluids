@@ -16,28 +16,29 @@ void calculate_delta_p(
     const double k
     ){
     
-    
+    const double W_fac = 315.0 / 64.0 / M_PI / std::pow(h,9);
+    const double gW_fac = -45.0 / M_PI / std::pow(h,6);
+
     for (int i = 0; i < numofparticles; i ++){
-        Eigen::Vector3d sum;
+        Eigen::RowVector3d sum;
         sum.setZero();
 
-        for (int it = 0; it < 30; it++){
+        for (int it = 0; it < N.cols(); it++){
             int j = N(i, it);
-            if ((X.row(i) -X.row(j)).norm() <= h && (X.row(i) -X.row(j)).norm() != 0){    //N(i,j) == 1
-                Eigen::Vector3d r;
-                double s_corr;
-                r  = X.row(i) - X.row(j);
-                //std::cout << "r " << r << std::endl;
+
+            double r = (X.row(i) -X.row(j)).norm();
+            if (r < h && r > 0) {    //N(i,j) == 1
+                Eigen::RowVector3d diff = X.row(i) - X.row(j);
+                double s_corr = 0.0;
                 
-                if (r.norm() < h){
-                    s_corr = -k * pow((pow(h,2) - pow(r.norm(), 2))/(pow(h,2) - pow(0.2*h,2)), 12); 
-                }
-                else{
-                    s_corr = 0.0;
+                if (k > 0.0) {
+                    double dq = 0.2 * h;
+                    double W = W_fac * std::pow(h*h - r*r, 3);
+                    double W0 = W_fac * std::pow(h*h - dq*dq, 3);
+                    s_corr = -k * std::pow(W/W0, 4);
                 }
 
-                sum += (lambda(i) + lambda(j)+ s_corr) * 45 * pow(h - r.norm(), 2)/ (M_PI * pow(h,6)) * r/r.norm(); //+ s_corr
-                
+                sum += gW_fac * (lambda(i) + lambda(j)+ s_corr) * pow(h - r, 2) * diff / r;                
             }
         }
         delta_p.row(i) = sum / rho_0;

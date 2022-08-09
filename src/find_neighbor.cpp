@@ -12,7 +12,8 @@ void find_neighbor(const Eigen::MatrixXd & X,
     const double cell_size,
     const int numofparticles,
     Eigen::MatrixXi & N){
-
+    
+    int k = 100;
 
     //build octtree
     std::vector<std::vector<int > > O_PI;
@@ -21,8 +22,8 @@ void find_neighbor(const Eigen::MatrixXd & X,
     Eigen::VectorXd O_W;
     igl::octree(X,O_PI,O_CH,O_CN,O_W);
 
-    N.resize(X.rows(), 30);
-    igl::knn(X,30,O_PI,O_CH,O_CN,O_W,N);
+    N.resize(X.rows(), k);
+    igl::knn(X,k,O_PI,O_CH,O_CN,O_W,N);
 /*
     for (int i = 0; i < X.rows(); i++){
         for (int j = 0; j < 20; j++){

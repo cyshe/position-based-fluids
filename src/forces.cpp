@@ -16,13 +16,8 @@ void forces(
     
 
 
-    Eigen::VectorXd lambda;
-    Eigen::MatrixXd delta_p;
-
-    delta_p.resize(numofparticles, 3);
-
-
-    lambda.resize(numofparticles);
+    Eigen::VectorXd lambda(numofparticles);
+    Eigen::MatrixXd delta_p(numofparticles, 3);
     lambda.setZero();
     calculate_lambda(X, N, lambda, h, rho_0);
     std::cout << "lambda "<< lambda(158) << std::endl;

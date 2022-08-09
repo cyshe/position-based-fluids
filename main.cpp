@@ -8,6 +8,7 @@
 #include <Eigen/Core>
 #include <sstream>
 #include <cmath>
+#include <igl/grid.h>
 
 using namespace Eigen;
 
@@ -16,7 +17,7 @@ polyscope::PointCloud* psCloud;
 MatrixXd q0, q, q_dot;  // particle positions, velocities
 MatrixXi N;             // Per-particle neighbors
 
-int numofparticles = 500;
+int numofparticles = 1000;
 
 // Boundary extents
 Vector3d lower_bound;
@@ -80,19 +81,23 @@ int main(int argc, char *argv[]){
   upper_bound << 1.0, 1.0, 1.0; 
 
   // Initialize positions
-  q.resize(numofparticles, 3);
-  q.setZero();
-  for (int i = 0; i < numofparticles; i++){
-    q(i, 0) = 0.1 * (i%10) - 0.5;
-    q(i, 1) = 0.1 * (int(floor(i/10.0)) % 10);
-    q(i, 2) = 0.1 * floor(i/100) -0.5;
-  }
+  double l = 15;
+  numofparticles = l*l*l;
+  Eigen::Vector3d res(l,l,l);
+  igl::grid(res,q);
+  q.array() = 2 * (q.array() - 0.5) * 0.55;
+
+  // q.resize(numofparticles, 3);
+  // q.setZero();
+  // for (int i = 0; i < numofparticles; i++){
+  //   q(i, 0) = 0.1 * (i%10) - 0.5;
+  //   q(i, 1) = 0.1 * (int(floor(i/10.0)) % 10);
+  //   q(i, 2) = 0.1 * floor(i/100) -0.5;
+  // }
   q0 = q; // initial positions
 
   q_dot.resize(numofparticles, 3);
   q_dot.setZero();
-
-  N.resize(numofparticles, 30);
 
   // Create point cloud polyscope object
   psCloud = polyscope::registerPointCloud("particles", q);

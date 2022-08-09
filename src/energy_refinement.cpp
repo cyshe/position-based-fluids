@@ -30,7 +30,7 @@ void energy_refinement(
             v.row(i) += 0.01 * (v.row(j)  - v.row(i)) * W;
         }
         */
-        for (int it = 0; it < 30; it++){
+        for (int it = 0; it < N.cols(); it++){
             int j = N(i, it); 
             double W = 0.0;
             double l = (x.row(i) - x.row(j)).norm();
