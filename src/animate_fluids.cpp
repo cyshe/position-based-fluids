@@ -8,12 +8,14 @@
 #include <Eigen/Core>
 #include <iostream>
 
+using namespace Eigen;
+
 void animate_fluids(
-    Eigen::MatrixXd & X, 
-    Eigen::MatrixXd & V, 
-    Eigen::MatrixXi & N,
-    const Eigen::Vector3d & low_bound,
-    const Eigen::Vector3d & up_bound,
+    MatrixXd & X, 
+    MatrixXd & V, 
+    MatrixXi & N,
+    const Vector3d & low_bound,
+    const Vector3d & up_bound,
     const int numofparticles,
     const int iters, 
     const double dt
@@ -21,9 +23,9 @@ void animate_fluids(
         
     double cell_size = 0.1;
 
-    Eigen::MatrixXd X_star = X;
+    MatrixXd X_star = X;
 
-    Eigen::MatrixXd f_ext(X.rows(), 3);
+    MatrixXd f_ext(X.rows(), 3);
     f_ext.setZero();
     f_ext.col(1).setConstant(-9.8);
     std::cout << "X* " << X_star.row(65) << std::endl;
@@ -38,25 +40,26 @@ void animate_fluids(
         forces(X_star, N, numofparticles);
     }
 
+    V = (X_star - X)/dt;
+    energy_refinement(X_star, N, V, numofparticles, 0.2, dt);
 
     // Enforce box boundary conditions
     for (int i = 0; i < numofparticles; i++){
         for (int j = 0; j < 3; ++j) {
             if (X_star(i,j) < low_bound(j)) {
-                // V(i, j) = 0.0;// 0.1 * abs(V(i, j));
+                V(i, j) = 0.1 * abs(V(i, j));
                 X_star(i,j) = low_bound(j);
             }
             if (X_star(i,j) > up_bound(j)) {
-                // V(i, j) = 0.0;//-0.1 * abs(V(i, j));
+                V(i, j) = -0.1 * abs(V(i, j));
                 X_star(i,j) = up_bound(j);
             }
         }
     }
 
-    V = (X_star - X)/dt;
-    energy_refinement(X_star, N, V, numofparticles, 0.2, dt);
+   
 
     X = X_star;
-    std::cout <<  X.row(158) << std::endl;
+    std::cout <<  X.row(65) << std::endl;
     return;
 }

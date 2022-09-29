@@ -20,7 +20,13 @@ void calculate_lambda(
     for (int i = 0; i < x.rows(); i++){
         c = C(x, N, rho_0, i, h);
         grad_c = grad_C_squared(x, N, rho_0, i, h);
-        lambda(i) = -c / (grad_c + epsilon);
+        if (grad_c + epsilon != 0){
+            lambda(i) = -c / (grad_c + epsilon);
+        }
+        else{
+            lambda(i) = -c / (grad_c + epsilon + 1);
+        }
+
         //std::cout << "c " << c  << " grad_c "<< grad_c << std::endl;
     }
     

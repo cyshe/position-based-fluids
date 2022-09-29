@@ -17,7 +17,7 @@ polyscope::PointCloud* psCloud;
 MatrixXd q0, q, q_dot;  // particle positions, velocities
 MatrixXi N;             // Per-particle neighbors
 
-int numofparticles = 1000;
+int numofparticles; //number of particles
 
 // Boundary extents
 Vector3d lower_bound;
@@ -30,12 +30,14 @@ void callback() {
 
   static bool is_simulating = false;
   static bool write_sequence = false;
-  static uint frame = 0;
+  static int frame = 0;
 
   ImGui::PushItemWidth(100);
 
   // Export particles to OBJ
-  if (ImGui::Checkbox("Write OBJ", &write_sequence)) {
+  ImGui::Checkbox("Write OBJ", &write_sequence);
+
+  if (write_sequence) {
     std::stringstream buffer;
     Eigen::MatrixXd F;
     buffer << "./Sequence/seq_" << std::setfill('0') << std::setw(3) << frame << ".obj";
@@ -52,6 +54,7 @@ void callback() {
     animate_fluids(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     psCloud->updatePointPositions(q);
     ++frame;
+    std::cout << frame << std::endl;
   }
 
   // Resets the simulation
@@ -81,12 +84,13 @@ int main(int argc, char *argv[]){
   upper_bound << 1.0, 1.0, 1.0; 
 
   // Initialize positions
-  double l = 15;
+  double l = 20;
   numofparticles = l*l*l;
   Eigen::Vector3d res(l,l,l);
   igl::grid(res,q);
   q.array() = 2 * (q.array() - 0.5) * 0.55;
-
+  q.col(0) =  q.col(0) + Eigen::MatrixXd(1, numofparticles).setConstant(0.4);
+  q.col(1) =  q.col(1) - Eigen::MatrixXd(1, numofparticles).setConstant(0.4);
   // q.resize(numofparticles, 3);
   // q.setZero();
   // for (int i = 0; i < numofparticles; i++){

@@ -21,8 +21,7 @@ void forces(
     lambda.setZero();
     calculate_lambda(X, N, lambda, h, rho_0);
     std::cout << "lambda "<< lambda(158) << std::endl;
-    calculate_delta_p(delta_p, X, N, lambda, rho_0, numofparticles, h, 0.001);
-    
+    calculate_delta_p(delta_p, X, N, lambda, rho_0, numofparticles, h, 0.001); //k correlates to splashiness
     std::cout << "delta_p "<< delta_p(158)<< std::endl;
 
     X = X + delta_p;

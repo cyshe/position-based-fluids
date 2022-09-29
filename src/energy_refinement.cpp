@@ -19,6 +19,8 @@ void energy_refinement(
 
     //vorticity_confinement(x, v, f, numofparticles, h);
     v += dt * f;
+
+    //XSPH velocity
     for (int i = 0; i < numofparticles; i++) {
         /*
         for (int j = 0; j < numofparticles; j++){
