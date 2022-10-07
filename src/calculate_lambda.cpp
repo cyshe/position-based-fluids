@@ -19,8 +19,8 @@ void calculate_lambda(
     double grad_c;
     double epsilon = 100;
     for (int i = 0; i < x.rows(); i++){
-        c = C(x, N, rho_0, i, h);
-        grad_c = grad_C_squared(x, N, rho_0, i, h);
+        c = C<DIM>(x, N, rho_0, i, h);
+        grad_c = grad_C_squared<DIM>(x, N, rho_0, i, h);
         if (grad_c + epsilon != 0){
             lambda(i) = -c / (grad_c + epsilon);
         }
@@ -63,7 +63,7 @@ double C(const Eigen::MatrixXd x,
     for (int it = 0; it < N.cols(); it++){
         int j = N(i, it); 
         if ((x.row(i) -x.row(j)).norm()<= h && (x.row(i) -x.row(j)).norm() > 0){
-            rho_i += mass* W((x.row(i) - x.row(j)), h);  
+            rho_i += mass* W<DIM>((x.row(i) - x.row(j)), h);  
         }
     }
     return rho_i/rho_0 - 1.0;
@@ -96,3 +96,51 @@ double grad_C_squared(const Eigen::MatrixXd x,
     sum_k += grad_i.squaredNorm();
     return sum_k;
 }
+
+template void calculate_lambda<3>(
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXi & N,
+    Eigen::VectorXd & lambda,
+    const double h,
+    const double rho_0
+    );
+
+/*
+template void calculate_lambda<2>(
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXi & N,
+    Eigen::VectorXd & lambda,
+    const double h,
+    const double rho_0
+    );
+*/
+template double W<3>(const Eigen::Matrix<double, 3, 1> r, const double h);
+ // template double W<2>(const Eigen::Matrix<double, 2, 1> r, const double h);
+
+template double C<3>(const Eigen::MatrixXd x, 
+    const Eigen::MatrixXi N,
+    const double rho_0,
+    const int i,
+    const double h);
+
+/*
+template double C<2>(const Eigen::MatrixXd x, 
+    const Eigen::MatrixXi N,
+    const double rho_0,
+    const int i,
+    const double h);
+*/
+template double grad_C_squared<3>(const Eigen::MatrixXd x, 
+    const Eigen::MatrixXi N,
+    const double rho_0,
+    const int i,
+    const double h);
+
+/*
+template double grad_C_squared<2>(const Eigen::MatrixXd x, 
+    const Eigen::MatrixXi N,
+    const double rho_0,
+    const int i,
+    const double h);
+*/
+

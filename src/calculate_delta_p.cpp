@@ -48,3 +48,27 @@ void calculate_delta_p(
     }
 
 }
+
+template void calculate_delta_p<3>(
+    Eigen::MatrixXd & delta_p,
+    const Eigen::MatrixXd & X,
+    const Eigen::MatrixXi & N,
+    const Eigen::VectorXd & lambda,
+    const double rho_0,
+    const int numofparticles,
+    const double h,
+    const double k
+    );
+
+/*
+template void calculate_delta_p<2>(
+    Eigen::MatrixXd & delta_p,
+    const Eigen::MatrixXd & X,
+    const Eigen::MatrixXi & N,
+    const Eigen::VectorXd & lambda,
+    const double rho_0,
+    const int numofparticles,
+    const double h,
+    const double k
+    );
+    */

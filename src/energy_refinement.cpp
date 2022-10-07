@@ -46,3 +46,21 @@ void energy_refinement(
     
     return ;
 }
+
+template void energy_refinement<3>(
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXi & N,
+    Eigen::MatrixXd & v, 
+    const int numofparticles, 
+    const double h,
+    const double dt
+    );
+
+template void energy_refinement<2>(
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXi & N,
+    Eigen::MatrixXd & v, 
+    const int numofparticles, 
+    const double h,
+    const double dt
+    );

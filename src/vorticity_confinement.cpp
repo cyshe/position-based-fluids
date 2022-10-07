@@ -45,3 +45,20 @@ void vorticity_confinement(
     }
     return;
 }
+
+template void vorticity_confinement<3>(
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXd & v, 
+    Eigen::MatrixXd & f,
+    const int numofparticles, 
+    const double h
+    );
+
+/*
+template void vorticity_confinement<2>(
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXd & v, 
+    Eigen::MatrixXd & f,
+    const int numofparticles, 
+    const double h
+    );*/

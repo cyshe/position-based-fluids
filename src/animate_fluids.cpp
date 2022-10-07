@@ -31,18 +31,18 @@ void animate_fluids(
     f_ext.col(1).setConstant(-9.8);
     std::cout << "X* " << X_star.row(65) << std::endl;
     
-    predict_position<3>(X_star, V, f_ext, dt);
+    predict_position(X_star, V, f_ext, dt);
     std::cout << "predict_pos" << X_star.row(65) << std::endl;
     
-    find_neighbor<3>(X_star, low_bound, up_bound, cell_size, numofparticles, N);
+    find_neighbor<DIM>(X_star, low_bound, up_bound, cell_size, numofparticles, N);
     //std::cout << N << std::endl << std::endl << std::endl;
 
     for (int i = 0; i < iters; i++){
-        forces(X_star, N, numofparticles);
+        forces<DIM>(X_star, N, numofparticles);
     }
 
     V = (X_star - X)/dt;
-    energy_refinement<3>(X_star, N, V, numofparticles, 0.2, dt);
+    energy_refinement<DIM>(X_star, N, V, numofparticles, 0.2, dt);
 
     // Enforce box boundary conditions
     for (int i = 0; i < numofparticles; i++){
@@ -64,3 +64,25 @@ void animate_fluids(
     std::cout <<  X.row(65) << std::endl;
     return;
 }
+
+template void animate_fluids<3>(
+    MatrixXd& X,
+    MatrixXd& V,
+    MatrixXi& N,
+    const Eigen::Matrix<double, 3, 1>& low_bound,
+    const Eigen::Matrix<double, 3, 1>& up_bound,
+    const int numofparticles,
+    const int iters,
+    const double dt
+    ); // 3D
+/*
+template void animate_fluids<2>(
+    MatrixXd& X,
+    MatrixXd& V,
+    MatrixXi& N,
+    const Eigen::Matrix<double, 2, 1>& low_bound,
+    const Eigen::Matrix<double, 2, 1>& up_bound,
+    const int numofparticles,
+    const int iters,
+    const double dt
+    ); // 2D*/
