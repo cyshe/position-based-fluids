@@ -28,8 +28,7 @@ double dt = 0.10;
 
 void callback() {
 
-  static bool is_simulating = false;
-  static bool write_sequence = false;
+  static bool is_simulating = false; static bool write_sequence = false;
   static int frame = 0;
 
   ImGui::PushItemWidth(100);
@@ -89,8 +88,8 @@ int main(int argc, char *argv[]){
   Eigen::Vector3d res(l,l,l);
   igl::grid(res,q);
   q.array() = 2 * (q.array() - 0.5) * 0.55;
-  q.col(0) =  q.col(0) + Eigen::MatrixXd(1, numofparticles).setConstant(0.4);
-  q.col(1) =  q.col(1) - Eigen::MatrixXd(1, numofparticles).setConstant(0.4);
+  q.col(0) =  q.col(0) + Eigen::MatrixXd(numofparticles,1).setConstant(0.4);
+  q.col(1) =  q.col(1) - Eigen::MatrixXd(numofparticles,1).setConstant(0.4);
   // q.resize(numofparticles, 3);
   // q.setZero();
   // for (int i = 0; i < numofparticles; i++){

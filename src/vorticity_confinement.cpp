@@ -2,8 +2,17 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-template<int DIM>
-void vorticity_confinement(
+template<>
+void vorticity_confinement<2>(
+    const Eigen::MatrixXd & x,
+    const Eigen::MatrixXd & v, 
+    Eigen::MatrixXd & f,
+    const int numofparticles, 
+    const double h
+    ){}
+
+template<>
+void vorticity_confinement<3>(
     const Eigen::MatrixXd & x,
     const Eigen::MatrixXd & v, 
     Eigen::MatrixXd & f,
@@ -12,6 +21,7 @@ void vorticity_confinement(
     ){
 
     double epsilon = 0.0001;
+    const int DIM = 3;
 
     for (int i=0; i < numofparticles; i++){
         Eigen::Matrix<double, DIM, 1> omega_i;
@@ -46,18 +56,18 @@ void vorticity_confinement(
     return;
 }
 
-template void vorticity_confinement<3>(
-    const Eigen::MatrixXd & x,
-    const Eigen::MatrixXd & v, 
-    Eigen::MatrixXd & f,
-    const int numofparticles, 
-    const double h
-    );
-
-template void vorticity_confinement<2>(
-    const Eigen::MatrixXd & x,
-    const Eigen::MatrixXd & v, 
-    Eigen::MatrixXd & f,
-    const int numofparticles, 
-    const double h
-    );
+//template void vorticity_confinement<3>(
+//    const Eigen::MatrixXd & x,
+//    const Eigen::MatrixXd & v, 
+//    Eigen::MatrixXd & f,
+//    const int numofparticles, 
+//    const double h
+//    );
+//
+//template void vorticity_confinement<2>(
+//    const Eigen::MatrixXd & x,
+//    const Eigen::MatrixXd & v, 
+//    Eigen::MatrixXd & f,
+//    const int numofparticles, 
+//    const double h
+//    );

@@ -78,7 +78,7 @@ double grad_C_squared(const Eigen::MatrixXd x,
     double sum_k = 0;
 
     double fac = -45.0 / M_PI / std::pow(h,6);
-    Eigen::Matrix<double, 1, DIM> grad_i(0.0,0.0,0.0);
+    Eigen::Matrix<double, 1, DIM> grad_i = Eigen::Matrix<double, 1, DIM>::Zero();
 
     for (int ij = 0; ij < N.cols(); ij++) {
         int j = N(i, ij);
