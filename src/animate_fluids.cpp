@@ -75,7 +75,7 @@ template void animate_fluids<3>(
     const int iters,
     const double dt
     ); // 3D
-/*
+    
 template void animate_fluids<2>(
     MatrixXd& X,
     MatrixXd& V,
@@ -85,4 +85,4 @@ template void animate_fluids<2>(
     const int numofparticles,
     const int iters,
     const double dt
-    ); // 2D*/
+    ); // 2D

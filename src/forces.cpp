@@ -35,9 +35,10 @@ template void forces<3>(
     Eigen::MatrixXi & N,
     const int numofparticles
     );
-
+/*
 template void forces<2>(
     Eigen::MatrixXd & X,
     Eigen::MatrixXi & N,
     const int numofparticles
     );
+*/

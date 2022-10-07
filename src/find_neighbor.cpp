@@ -131,11 +131,11 @@ template void find_neighbor<3>(const Eigen::MatrixXd & X,
     const int numofparticles,
     Eigen::MatrixXi & N);
     
-/*
+
 template void find_neighbor<2>(const Eigen::MatrixXd & X, 
     const Eigen::Matrix<double, 2, 1> lower_bound,
     const Eigen::Matrix<double, 2, 1> upper_bound, 
     const double cell_size,
     const int numofparticles,
     Eigen::MatrixXi & N);
-    */
+    

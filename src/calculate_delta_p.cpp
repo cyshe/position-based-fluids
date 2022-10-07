@@ -60,7 +60,6 @@ template void calculate_delta_p<3>(
     const double k
     );
 
-/*
 template void calculate_delta_p<2>(
     Eigen::MatrixXd & delta_p,
     const Eigen::MatrixXd & X,
@@ -71,4 +70,3 @@ template void calculate_delta_p<2>(
     const double h,
     const double k
     );
-    */

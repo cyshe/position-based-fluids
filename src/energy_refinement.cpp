@@ -55,7 +55,6 @@ template void energy_refinement<3>(
     const double h,
     const double dt
     );
-
 template void energy_refinement<2>(
     const Eigen::MatrixXd & x,
     const Eigen::MatrixXi & N,

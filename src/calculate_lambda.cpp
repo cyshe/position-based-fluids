@@ -105,7 +105,6 @@ template void calculate_lambda<3>(
     const double rho_0
     );
 
-/*
 template void calculate_lambda<2>(
     const Eigen::MatrixXd & x,
     const Eigen::MatrixXi & N,
@@ -113,9 +112,9 @@ template void calculate_lambda<2>(
     const double h,
     const double rho_0
     );
-*/
+
 template double W<3>(const Eigen::Matrix<double, 3, 1> r, const double h);
- // template double W<2>(const Eigen::Matrix<double, 2, 1> r, const double h);
+template double W<2>(const Eigen::Matrix<double, 2, 1> r, const double h);
 
 template double C<3>(const Eigen::MatrixXd x, 
     const Eigen::MatrixXi N,
@@ -123,24 +122,21 @@ template double C<3>(const Eigen::MatrixXd x,
     const int i,
     const double h);
 
-/*
 template double C<2>(const Eigen::MatrixXd x, 
     const Eigen::MatrixXi N,
     const double rho_0,
     const int i,
     const double h);
-*/
+
 template double grad_C_squared<3>(const Eigen::MatrixXd x, 
     const Eigen::MatrixXi N,
     const double rho_0,
     const int i,
     const double h);
 
-/*
 template double grad_C_squared<2>(const Eigen::MatrixXd x, 
     const Eigen::MatrixXi N,
     const double rho_0,
     const int i,
     const double h);
-*/
 
