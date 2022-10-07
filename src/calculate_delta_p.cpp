@@ -5,6 +5,8 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+
+template<int DIM>
 void calculate_delta_p(
     Eigen::MatrixXd & delta_p,
     const Eigen::MatrixXd & X,
@@ -20,7 +22,7 @@ void calculate_delta_p(
     const double gW_fac = -45.0 / M_PI / std::pow(h,6);
 
     for (int i = 0; i < numofparticles; i ++){
-        Eigen::RowVector3d sum;
+        Eigen::Matrix<double, 1, DIM> sum;
         sum.setZero();
 
         for (int it = 0; it < N.cols(); it++){
@@ -28,7 +30,7 @@ void calculate_delta_p(
 
             double r = (X.row(i) -X.row(j)).norm();
             if (r < h && r > 0) {    //N(i,j) == 1
-                Eigen::RowVector3d diff = X.row(i) - X.row(j);
+                Eigen::Matrix<double, 1, DIM> diff = X.row(i) - X.row(j);
                 double s_corr = 0.0;
                 
                 if (k > 0.0) {

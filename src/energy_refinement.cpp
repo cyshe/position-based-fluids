@@ -5,6 +5,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+template<int DIM>
 void energy_refinement(
     const Eigen::MatrixXd & x,
     const Eigen::MatrixXi & N,
@@ -14,7 +15,7 @@ void energy_refinement(
     const double dt
     ){
     Eigen::MatrixXd f;
-    f.resize(numofparticles, 3);
+    f.resize(numofparticles, DIM);
     f.setZero();
 
     //vorticity_confinement(x, v, f, numofparticles, h);

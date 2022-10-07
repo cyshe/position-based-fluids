@@ -6,9 +6,10 @@
 #include "igl/octree.h"
 #include "igl/knn.h"
 
+template<int DIM>
 void find_neighbor(const Eigen::MatrixXd & X, 
-    const Eigen::Vector3d lower_bound,
-    const Eigen::Vector3d upper_bound, 
+    const Eigen::Matrix<double, DIM, 1> lower_bound,
+    const Eigen::Matrix<double, DIM, 1> upper_bound, 
     const double cell_size,
     const int numofparticles,
     Eigen::MatrixXi & N){

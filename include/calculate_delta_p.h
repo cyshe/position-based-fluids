@@ -1,5 +1,6 @@
 #include<Eigen/Core>
 
+template<int DIM>
 void calculate_delta_p(
     Eigen::MatrixXd & delta_p,
     const Eigen::MatrixXd & X,

@@ -4,7 +4,7 @@
 #include <Eigen/Core>
 #include <iostream>
 
-
+template<int DIM>
 void forces(
     Eigen::MatrixXd & X,
     Eigen::MatrixXi & N,
@@ -17,7 +17,7 @@ void forces(
 
 
     Eigen::VectorXd lambda(numofparticles);
-    Eigen::MatrixXd delta_p(numofparticles, 3);
+    Eigen::MatrixXd delta_p(numofparticles, DIM);
     lambda.setZero();
     calculate_lambda(X, N, lambda, h, rho_0);
     std::cout << "lambda "<< lambda(158) << std::endl;

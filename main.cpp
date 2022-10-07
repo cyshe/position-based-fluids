@@ -51,7 +51,7 @@ void callback() {
   ImGui::SameLine();
   if (ImGui::Button("One Step") || is_simulating) {
     
-    animate_fluids(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
+    animate_fluids<3>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     psCloud->updatePointPositions(q);
     ++frame;
     std::cout << frame << std::endl;

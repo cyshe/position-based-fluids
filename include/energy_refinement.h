@@ -1,5 +1,6 @@
 #include <Eigen/Core>
 
+template<int DIM>
 void energy_refinement(
     const Eigen::MatrixXd & x,
     const Eigen::MatrixXi & N,
