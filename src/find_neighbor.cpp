@@ -6,10 +6,44 @@
 #include "igl/octree.h"
 #include "igl/knn.h"
 
+template <>
+void find_neighbor<2>(const Eigen::MatrixXd & X, 
+    const Eigen::Matrix<double, 2, 1> lower_bound,
+    const Eigen::Matrix<double, 2, 1> upper_bound, 
+    const double cell_size,
+    const int numofparticles,
+    Eigen::MatrixXi & N){
+    
+    int k = 50;
+    Eigen::MatrixXd X_3d;
+    
+    X_3d.resize(numofparticles, 3);
+    X_3d.setZero();
+    for (int i = 0; i < numofparticles; i++){
+        for (int j = 0; j < 2; j++){
+            X_3d(i, j) = X(i,j);
+        }
+    }
+
+
+    //build octtree
+    std::vector<std::vector<int>> O_PI;
+    Eigen::MatrixXi O_CH;
+    Eigen::MatrixXd O_CN;
+    Eigen::VectorXd O_W;
+    igl::octree(X_3d,O_PI,O_CH,O_CN,O_W);
+
+    N.resize(numofparticles, k);
+
+    igl::knn(X_3d,k,O_PI,O_CH,O_CN,O_W,N);
+
+    return;
+}
+
 template<int DIM>
 void find_neighbor(const Eigen::MatrixXd & X, 
     const Eigen::Matrix<double, DIM, 1> lower_bound,
-    const Eigen::Matrix<double, DIM, 1> upper_bound, 
+    const Eigen::Matrix<double, DIM, 1> upper_bound, //can comment out later
     const double cell_size,
     const int numofparticles,
     Eigen::MatrixXi & N){
@@ -25,6 +59,20 @@ void find_neighbor(const Eigen::MatrixXd & X,
 
     N.resize(X.rows(), k);
     igl::knn(X,k,O_PI,O_CH,O_CN,O_W,N);
+
+    return;
+}
+
+template void find_neighbor<3>(const Eigen::MatrixXd & X, 
+    const Eigen::Matrix<double, 3, 1> lower_bound,
+    const Eigen::Matrix<double, 3, 1> upper_bound, 
+    const double cell_size,
+    const int numofparticles,
+    Eigen::MatrixXi & N);
+    
+
+
+
 /*
     for (int i = 0; i < X.rows(); i++){
         for (int j = 0; j < 20; j++){
@@ -121,21 +169,7 @@ void find_neighbor(const Eigen::MatrixXd & X,
             }
         }
     }*/
-    return;
-}
 
-template void find_neighbor<3>(const Eigen::MatrixXd & X, 
-    const Eigen::Matrix<double, 3, 1> lower_bound,
-    const Eigen::Matrix<double, 3, 1> upper_bound, 
-    const double cell_size,
-    const int numofparticles,
-    Eigen::MatrixXi & N);
-    
 
-template void find_neighbor<2>(const Eigen::MatrixXd & X, 
-    const Eigen::Matrix<double, 2, 1> lower_bound,
-    const Eigen::Matrix<double, 2, 1> upper_bound, 
-    const double cell_size,
-    const int numofparticles,
-    Eigen::MatrixXi & N);
+
     

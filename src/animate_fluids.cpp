@@ -35,7 +35,6 @@ void animate_fluids(
     std::cout << "predict_pos" << X_star.row(65) << std::endl;
     
     find_neighbor<DIM>(X_star, low_bound, up_bound, cell_size, numofparticles, N);
-    //std::cout << N << std::endl << std::endl << std::endl;
 
     for (int i = 0; i < iters; i++){
         forces<DIM>(X_star, N, numofparticles);
@@ -58,7 +57,6 @@ void animate_fluids(
         }
     }
 
-   
 
     X = X_star;
     std::cout <<  X.row(65) << std::endl;

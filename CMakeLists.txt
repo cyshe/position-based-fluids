@@ -26,3 +26,6 @@ find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 #build executable 
 add_executable(${PROJECT_NAME} main.cpp ${CPP_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC polyscope Eigen3::Eigen)
+
+add_executable(main_2d main_2d.cpp ${CPP_FILES})
+target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)
