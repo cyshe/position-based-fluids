@@ -45,13 +45,15 @@ void callback() {
     igl::writeOBJ(file,q, F);
   }
 
+  ImGui::InputInt("Solver Iterations", &iters);
+
   // Perform simulation step
   ImGui::Checkbox("Simulate", &is_simulating);
   ImGui::SameLine();
   if (ImGui::Button("One Step") || is_simulating) {
     
     animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    psCloud->updatePointPositions(q);
+    psCloud->updatePointPositions2D(q);
     ++frame;
     std::cout << frame << std::endl;
   }
@@ -60,7 +62,7 @@ void callback() {
   if (ImGui::Button("Reset")) {
     q = q0;
     q_dot.setZero();
-    psCloud->updatePointPositions(q);
+    psCloud->updatePointPositions2D(q);
     frame = 0;
   }
 }
