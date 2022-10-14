@@ -1,3 +1,4 @@
+#include "animate_sph.h"
 #include "animate_fluids.h"
 #include "polyscope/polyscope.h"
 #include "polyscope/point_cloud.h"
@@ -51,8 +52,8 @@ void callback() {
   ImGui::Checkbox("Simulate", &is_simulating);
   ImGui::SameLine();
   if (ImGui::Button("One Step") || is_simulating) {
-    
-    animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
+    animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
+    // animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     psCloud->updatePointPositions2D(q);
     ++frame;
     std::cout << frame << std::endl;
