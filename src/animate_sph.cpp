@@ -23,7 +23,7 @@ void animate_sph<2>(
     
     MatrixXd X_half, V_new, a_half;
     MatrixXd rho, p;
-    double kappa = 100000;
+    double kappa = 100;//100000;
     double rho_0 = 1; //define later
     double m = 1;
     double h = 0.1;
@@ -48,6 +48,11 @@ void animate_sph<2>(
         p(i) = (rho_0/rho(i) -1) * kappa;
     }
 
+    // TODO 
+    // Add boundary conditions and gravity
+    // Double check that acceleration formula is right
+    // Switched to 2D Cubic b-spline
+    //      (https://pysph.readthedocs.io/en/latest/reference/kernels.html)
 
     // calulate x_half with rho and p 
     for (int i = 0; i < numofparticles; i++){
@@ -56,9 +61,15 @@ void animate_sph<2>(
             double fac = -45.0 / M_PI / std::pow(h,6);
             double r = (X_half.row(i) - X_half.row(j)).norm();
 
-            if (r <= h){
-                a_half.row(i) -= m * (p(j) + p(i))/rho(j) /rho(j) * (fac * std::pow(h-r,2)
-                * (X_half.row(i) - X_half.row(j)) / r) / rho_0; 
+            if (r <= h && r > 0){
+                //a_half.row(i) -= m * (p(j) + p(i))/rho(j) /rho(j) 
+                //    * (fac * std::pow(h-r,2)
+                //    * (X_half.row(i) - X_half.row(j)) / r) / rho_0; 
+                //
+                // TODO double check for negative...
+                a_half.row(i) -= m * (p(j)/(rho(j)*rho(j)) + p(i)/(rho(i)*rho(i)))
+                    * (fac * std::pow(h-r,2) 
+                    * (X_half.row(i) - X_half.row(j)) / r); 
             }
         }
     }
