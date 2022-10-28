@@ -56,6 +56,7 @@ void callback() {
     // animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     psCloud->updatePointPositions2D(q);
     ++frame;
+//    std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
   }
 
