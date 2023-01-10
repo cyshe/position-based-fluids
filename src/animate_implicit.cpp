@@ -1,4 +1,4 @@
-#include "animate_sph.h"
+#include "animate_implicit.h"
 #include "calculate_lambda.h"
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
@@ -10,7 +10,7 @@
 using namespace Eigen;
 
 template <>
-void animate_sph<2>(
+void animate_implicit<2>(
     MatrixXd & X, 
     MatrixXd & V, 
     MatrixXi & N,
@@ -125,7 +125,7 @@ void animate_sph<2>(
 }
 
 template <>
-void animate_sph<3>(
+void animate_implicit<3>(
     MatrixXd & X, 
     MatrixXd & V, 
     MatrixXi & N,

@@ -1,5 +1,6 @@
 #include "animate_sph.h"
 #include "animate_fluids.h"
+#include "animate_implicit.h"
 #include "polyscope/polyscope.h"
 #include "polyscope/point_cloud.h"
 #include "polyscope/curve_network.h"
@@ -52,8 +53,9 @@ void callback() {
   ImGui::Checkbox("Simulate", &is_simulating);
   ImGui::SameLine();
   if (ImGui::Button("One Step") || is_simulating) {
-    animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    // animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
+    //animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
+    //animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
+    animate_implicit<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);)
     psCloud->updatePointPositions2D(q);
     ++frame;
 //    std::cout <<"X = " << q << std:: endl;
@@ -85,16 +87,20 @@ int main(int argc, char *argv[]){
 
   // Init bounding box
   lower_bound << -1.0, -1.0;
-  upper_bound << 1.0, 1.0; 
+  upper_bound << 4.366, 2.0; 
 
   // Initialize positions
   double l = 20;
-  numofparticles = l*l;
-  Eigen::Vector2d res(l,l);
+  numofparticles = l* 2 *l;
+  Eigen::Vector2d res(2*l,l);
   igl::grid(res,q);
   q.array() = 0.55 * 2 * (q.array() - 0.5);
-  q.col(0) =  q.col(0) + Eigen::MatrixXd(numofparticles,1).setConstant(0.4);
-  // q.col(1) =  q.col(1) - Eigen::MatrixXd(numofparticles,1).setConstant(0.4);
+  q.col(0) = q.col(0) * 2;
+
+  q.col(0) =  q.col(0) + Eigen::MatrixXd(numofparticles,1).setConstant(0.1);
+  q.col(1) =  q.col(1) - Eigen::MatrixXd(numofparticles,1).setConstant(0.45);
+  std::cout << q.row(0) << q.row(399) << std::endl;
+  // 
   // q.resize(numofparticles, 3);
   // q.setZero();
   // for (int i = 0; i < numofparticles; i++){
