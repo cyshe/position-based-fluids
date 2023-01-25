@@ -5,6 +5,7 @@ template <int DIM>
 void animate_implicit(
     Eigen::MatrixXd & X, 
     Eigen::MatrixXd & V, 
+    Eigen::MatrixXd & J, 
     Eigen::MatrixXi & N,
     const Eigen::Matrix<double, DIM, 1> & low_bound,
     const Eigen::Matrix<double, DIM, 1> & up_bound,

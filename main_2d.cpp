@@ -16,7 +16,7 @@ using namespace Eigen;
 
 polyscope::PointCloud* psCloud;
 
-MatrixXd q0, q, q_dot;  // particle positions, velocities
+MatrixXd q0, q, q_dot, J;  // particle positions, velocities
 MatrixXi N;             // Per-particle neighbors
 
 int numofparticles; //number of particles
@@ -55,7 +55,7 @@ void callback() {
   if (ImGui::Button("One Step") || is_simulating) {
     //animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     //animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    animate_implicit<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);)
+    animate_implicit<2>(q, q_dot, J, N, lower_bound, upper_bound, numofparticles, iters, dt);
     psCloud->updatePointPositions2D(q);
     ++frame;
 //    std::cout <<"X = " << q << std:: endl;
@@ -66,6 +66,7 @@ void callback() {
   if (ImGui::Button("Reset")) {
     q = q0;
     q_dot.setZero();
+    J.setConstant(1);
     psCloud->updatePointPositions2D(q);
     frame = 0;
   }
@@ -111,7 +112,9 @@ int main(int argc, char *argv[]){
   q0 = q; // initial positions
   q_dot.resize(numofparticles, 2);
   q_dot.setZero();
-
+  
+  J.resize(numofparticles, 1);
+  J.setConstant(1);
   // Create point cloud polyscope object
   psCloud = polyscope::registerPointCloud2D("particles", q);
 

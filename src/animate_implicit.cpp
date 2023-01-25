@@ -12,7 +12,8 @@ using namespace Eigen;
 template <>
 void animate_implicit<2>(
     MatrixXd & X, 
-    MatrixXd & V, 
+    MatrixXd & V,
+    MatrixXd & J,
     MatrixXi & N,
     const Eigen::Matrix<double, 2, 1> & low_bound,
     const Eigen::Matrix<double, 2, 1> & up_bound,
@@ -20,93 +21,135 @@ void animate_implicit<2>(
     const int iters, 
     const double dt
     ){
-    
-    MatrixXd X_half, V_new, a_half;
-    MatrixXd rho, p;
+    int n = numofparticles;
+    MatrixXd X_new;
     double kappa = 1000;//100000;
     double rho_0 = 1; //define later
     double m = 1;
     double h = 0.1;
-    X_half.resize(numofparticles, 2);
-    V_new.resize(numofparticles, 2);
-    a_half.resize(numofparticles, 2);
-    rho.resize(numofparticles, 1);
-    p.resize(numofparticles, 1);
+    double vol = m/rho_0;
+    X_new.resize(n, 2);
 
-    MatrixXd f_ext(numofparticles, 2);
+    MatrixXd f_ext(n, 2);
     f_ext.setZero();
     f_ext.col(1).setConstant(-9.8);
 
-    X_half = X + dt/2 * V+ dt * dt/8 * f_ext;
-    a_half.setZero();
-    // use x_half to calculate density rho
-    double fac = 10.0 / M_PI / std::pow(h,2)/7.0;    
+    
+    MatrixXd A, M, B, H, V_b, b, x_hat, Jx, X_flat, f_ext_flat, V_flat;
+    A.resize(4 * n, 4 * n);
+    M.resize(2 * n, 2 * n);
+    B.resize(n, 2 * n);
+    H.resize(n, n);
+    V_b.resize(n, n);
+    b.resize(4 * n, n);
+    x_hat.resize(2 * n, 1);
+    Jx.resize(n, 1); 
+    X_flat.resize(2 * n, 1); 
+    V_flat.resize(2 * n, 1); 
+    f_ext_flat.resize(2 * n, 1); 
 
-
-    for (int i = 0; i < numofparticles; i++){
-        for (int j = 0; j < numofparticles; j++){
-            // rho(i) += m * W<2>(X_half.row(i) - X_half.row(j), h);
-            if (i != j){
-                double r = (X_half.row(i) - X_half.row(j)).norm();
-                double q = r / h;
-                if (q <= 1 && q > 0){
-                    rho(i) += m * fac * (1 - 1.5* q * q * (1-q/2));
-                }
-                else if (q > 1 && q <= 2){
-                    rho(i) += m * (fac / 4) * (2 - q) * (2 - q) * (2 - q);
-                }
-                else{
-                    rho(i) += 0;
-                }
-            }
-        }
+    A.setZero();
+    M.setZero();
+    B.setZero();
+    H.setZero();
+    V_b.setZero();
+    b.setZero();
+    x_hat.setZero();
+      
+    // Flatten position matrices
+    for (int i = 0; i < n; i++) {
+        X_flat(2 * i) = X(i, 0);
+        X_flat(2 * i + 1) = X(i, 1);
+        V_flat(2 * i) = V(i, 0);
+        V_flat(2 * i + 1) = V(i, 1);
+        f_ext_flat(2 * i) = f_ext(i, 0);
+        f_ext_flat(2 * i + 1) = f_ext(i, 1);
+        
     }
-    std::cout << rho << std::endl;
+    
+    //M diagonal of particle masses
+    M = MatrixXd::Identity(2 * n, 2 * n) * m;
 
-    // use x_half and rho to calculate pressure p
-    for (int i = 0; i < numofparticles; i++){
-        p(i) = (rho_0/rho(i) - 1) * kappa;
-    }
+    //B
+    double fac = 10/7/M_PI/h/rho_0;
 
-    std::cout <<"p = " <<p(5) << std::endl;
-    // TODO 
-    // Double check that acceleration formula is right
-    // Switched to 2D Cubic b-spline
-    //      (https://pysph.readthedocs.io/en/latest/reference/kernels.html)
-
-
-    // calulate x_half with rho and p 
-    for (int i = 0; i < numofparticles; i++){
-        for(int j = 0; j < numofparticles; j++){
-
+    for (int i = 0; i < n; i ++){
+        for (int j = 0; j < n; j++){
+            double q = (X.row(j) - X.row(i)).norm();
+            MatrixXd dc_dx;
+            dc_dx.resize(1, 2);
+            dc_dx.setZero();
             
-            double r = (X_half.row(i) - X_half.row(j)).norm();
-            double q = r / h;
-
             if (q <= 1 && q > 0){
-                //a_half.row(i) -= m * (p(j) + p(i))/rho(j) /rho(j) 
-                //    * (fac * std::pow(h-r,2)
-                //    * (X_half.row(i) - X_half.row(j)) / r) / rho_0; 
-                //
-                // TODO double check for negative...
-                a_half.row(i) -= m * (p(j)/(rho(j)*rho(j)) + p(i)/(rho(i)*rho(i)))
-                    * (fac * (9 * q * q/ 4 - 3 * q)
-                    * (X_half.row(i) - X_half.row(j))/r); 
+                dc_dx = - fac * m * (3 - 9 * q/4) * X.row(j);
             }
             else if (q > 1 && q <= 2){
-                a_half.row(i) -= m * (p(j)/(rho(j)*rho(j)) + p(i)/(rho(i)*rho(i)))
-                    * ((-3 * fac / 4 * (2 - q) * (2 - q))
-                    * (X_half.row(i) - X_half.row(j))/r);
+                dc_dx = fac * m * 0.75 * (2 - q *q) * X.row(j);
+            }
+            B(i, 2*j) = dc_dx(0);
+            B(i, 2*j+1) = dc_dx(1);
+
+        }
+    }
+
+    //V_block diagonal of particle volumes
+    V_b = MatrixXd::Identity(n, n) * vol;
+    
+    //H
+    H = kappa * h * h * V_b;
+    
+    
+    std::cout << "inverse" << std::endl;
+    // x hat
+    x_hat = X_flat + h * V_flat + h * h * MatrixXd::Identity(2*n, 2*n) / m  * f_ext_flat;
+
+    // Jx rho(x)/rho_0
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
+            double r = (X.row(j) - X.row(i)).norm();
+            double sig = 10/7/M_PI/h;
+
+            if (r <= 1 && r > 0){
+                Jx(i) += m * (1 - 1.5 * r * r *(1 - 0.5 *r)) * sig;
+            }
+            else if (r > 1 && r <= 2){
+                Jx(i) += m * (2-r)*(2-r)*(2-r) * sig /4;
             }
         }
     }
 
-    //std::cout << a_half << std::endl;
-    V_new = V + dt * a_half;
+    std::cout << "block" << std::endl;
+    A.block(0, 0, 2 * n, 2 * n) = M;
+    A.block(0, 3 * n, 2 * n, n) = B.transpose();
+    A.block(2 * n, 2 * n, n, n) = H;
+    A.block(n, 3*n, n, n) = V_b;
+    A.block(3*n, 0, n, 2 * n) = B;
+    A.block(3*n, n, n, n) = V_b;
     
+    b.block(0, 0, 2*n, 1) = M * (X_flat - x_hat);
+    b.block(2 * n, 0, n, 1) = kappa * h * h * (J - MatrixXd::Constant(n, 1, 1));
+    b.block(3 * n, 0, n, 1) = J - Jx;
+    
+    // TODO: set up Ax = b
+    // 
+    //solve matrix multiplication
+    MatrixXd sol;
+    sol.resize(4 * n, 1);
+    
+    std::cout << "start solve" << std::endl;
+    sol = A.colPivHouseholderQr().solve(b);
 
-    X += dt/2 * (V + V_new) + dt * dt/2 * f_ext;
-    V = V_new;
+    std::cout << "solve" << std::endl;
+    for (int i=0 ; i < n; i++){
+        X_new(i, 0) = sol(2 *i, 0);
+        X_new(i, 1) = sol(2 *i + 1, 0); 
+    }
+
+    J = sol.block(2*n, 0, n, 1);
+    V = (X_new - X)/h;
+    X = X_new;
+    std::cout << J << std::endl;
+    // boundary detection
     
     for (int i = 0; i < numofparticles; i++){
         for (int j = 0; j < 2; ++j) {
@@ -128,6 +171,7 @@ template <>
 void animate_implicit<3>(
     MatrixXd & X, 
     MatrixXd & V, 
+    MatrixXd & J,
     MatrixXi & N,
     const Eigen::Matrix<double, 3, 1> & low_bound,
     const Eigen::Matrix<double, 3, 1> & up_bound,
