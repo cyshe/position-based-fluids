@@ -23,11 +23,12 @@ void animate_implicit<2>(
     ){
     int n = numofparticles;
     MatrixXd X_new;
-    double kappa = 1000;//100000;
+    double kappa = 1;//100000;
     double rho_0 = 1; //define later
     double m = 1;
-    double h = 0.1;
+    double h = 0.1; // h for particle distance
     double vol = m/rho_0;
+    X_new.setZero();
     X_new.resize(n, 2);
 
     MatrixXd f_ext(n, 2);
@@ -41,7 +42,7 @@ void animate_implicit<2>(
     B.resize(n, 2 * n);
     H.resize(n, n);
     V_b.resize(n, n);
-    b.resize(4 * n, n);
+    b.resize(4 * n, 1);
     x_hat.resize(2 * n, 1);
     Jx.resize(n, 1); 
     X_flat.resize(2 * n, 1); 
@@ -55,7 +56,11 @@ void animate_implicit<2>(
     V_b.setZero();
     b.setZero();
     x_hat.setZero();
-      
+    Jx.setZero();
+    X_flat.setZero();
+    V_flat.setZero();
+    f_ext_flat.setZero();
+
     // Flatten position matrices
     for (int i = 0; i < n; i++) {
         X_flat(2 * i) = X(i, 0);
@@ -71,7 +76,7 @@ void animate_implicit<2>(
     M = MatrixXd::Identity(2 * n, 2 * n) * m;
 
     //B
-    double fac = 10/7/M_PI/h/rho_0;
+    double fac = 10/7/M_PI/h/h/rho_0;
 
     for (int i = 0; i < n; i ++){
         for (int j = 0; j < n; j++){
@@ -81,10 +86,10 @@ void animate_implicit<2>(
             dc_dx.setZero();
             
             if (q <= 1 && q > 0){
-                dc_dx = - fac * m * (3 - 9 * q/4) * X.row(j);
+                dc_dx = fac * m * (3*q - 9 * q * q/4) * (X.row(j) - X.row(i))/q;
             }
             else if (q > 1 && q <= 2){
-                dc_dx = fac * m * 0.75 * (2 - q *q) * X.row(j);
+                dc_dx = fac * m * 0.75 * (2 - q) * (2 - q) * (X.row(j) - X.row(i))/q;
             }
             B(i, 2*j) = dc_dx(0);
             B(i, 2*j+1) = dc_dx(1);
@@ -96,18 +101,18 @@ void animate_implicit<2>(
     V_b = MatrixXd::Identity(n, n) * vol;
     
     //H
-    H = kappa * h * h * V_b;
+    H = kappa * dt * dt * V_b;
     
     
     std::cout << "inverse" << std::endl;
     // x hat
-    x_hat = X_flat + h * V_flat + h * h * MatrixXd::Identity(2*n, 2*n) / m  * f_ext_flat;
+    x_hat = X_flat + dt * V_flat + dt * dt * f_ext_flat;
 
     // Jx rho(x)/rho_0
     for (int i = 0; i < n; i++){
         for (int j = 0; j < n; j++){
             double r = (X.row(j) - X.row(i)).norm();
-            double sig = 10/7/M_PI/h;
+            double sig = 10/7/M_PI/h/h/rho_0;
 
             if (r <= 1 && r > 0){
                 Jx(i) += m * (1 - 1.5 * r * r *(1 - 0.5 *r)) * sig;
@@ -127,7 +132,7 @@ void animate_implicit<2>(
     A.block(3*n, n, n, n) = V_b;
     
     b.block(0, 0, 2*n, 1) = M * (X_flat - x_hat);
-    b.block(2 * n, 0, n, 1) = kappa * h * h * (J - MatrixXd::Constant(n, 1, 1));
+    b.block(2 * n, 0, n, 1) = kappa * dt * dt * (J - MatrixXd::Constant(n, 1, 1));
     b.block(3 * n, 0, n, 1) = J - Jx;
     
     // TODO: set up Ax = b
@@ -137,7 +142,7 @@ void animate_implicit<2>(
     sol.resize(4 * n, 1);
     
     std::cout << "start solve" << std::endl;
-    sol = A.colPivHouseholderQr().solve(b);
+    sol = A.colPivHouseholderQr().solve(-b);
 
     std::cout << "solve" << std::endl;
     for (int i=0 ; i < n; i++){
@@ -146,9 +151,9 @@ void animate_implicit<2>(
     }
 
     J = sol.block(2*n, 0, n, 1);
-    V = (X_new - X)/h;
+    V = (X_new - X)/dt;
     X = X_new;
-    std::cout << J << std::endl;
+    std::cout << X << std::endl;
     // boundary detection
     
     for (int i = 0; i < numofparticles; i++){

@@ -91,7 +91,7 @@ int main(int argc, char *argv[]){
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions
-  double l = 20;
+  double l = 10;
   numofparticles = l* 2 *l;
   Eigen::Vector2d res(2*l,l);
   igl::grid(res,q);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]){
 
   q.col(0) =  q.col(0) + Eigen::MatrixXd(numofparticles,1).setConstant(0.1);
   q.col(1) =  q.col(1) - Eigen::MatrixXd(numofparticles,1).setConstant(0.45);
-  std::cout << q.row(0) << q.row(399) << std::endl;
+  //std::cout << q.row(0) << q.row(399) << std::endl;
   // 
   // q.resize(numofparticles, 3);
   // q.setZero();
