@@ -16,8 +16,9 @@ using namespace Eigen;
 
 polyscope::PointCloud* psCloud;
 
-MatrixXd q0, q, q_dot, J;  // particle positions, velocities
+MatrixXd q0, q, q_dot;  // particle positions, velocities
 MatrixXi N;             // Per-particle neighbors
+VectorXd J;
 
 int numofparticles; //number of particles
 
@@ -25,8 +26,8 @@ int numofparticles; //number of particles
 Vector2d lower_bound;
 Vector2d upper_bound;
 
-int iters = 3;
-double dt = 0.10;
+int iters = 80;
+double dt = 0.1;
 
 void callback() {
 
@@ -58,7 +59,7 @@ void callback() {
     animate_implicit<2>(q, q_dot, J, N, lower_bound, upper_bound, numofparticles, iters, dt);
     psCloud->updatePointPositions2D(q);
     ++frame;
-//    std::cout <<"X = " << q << std:: endl;
+    std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
   }
 
@@ -91,8 +92,10 @@ int main(int argc, char *argv[]){
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions
-  double l = 10;
+  double l = 20;
   numofparticles = l* 2 *l;
+
+  // (-1, -1), (1.2, 0.1) 800 particles
   Eigen::Vector2d res(2*l,l);
   igl::grid(res,q);
   q.array() = 0.55 * 2 * (q.array() - 0.5);
