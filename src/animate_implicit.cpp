@@ -22,12 +22,15 @@ void animate_implicit<2>(
     const double dt
     ){
     int n = numofparticles;
-    double kappa = 10000;//100000;
+    double kappa = 1*10000;//100000;
     double rho_0 = 1; //define later
     double m = 1;
     double h = 0.1; // h for particle distance
     double vol = m/rho_0;
-    
+
+    const double kappa_dt_sqr = kappa * dt * dt;
+    const double dt_sqr = dt * dt;
+
     
     MatrixXd f_ext(n, 2);
     f_ext.setZero();
@@ -37,7 +40,6 @@ void animate_implicit<2>(
     x_hat.resize(2 * n);
     x_hat.setZero();
     
-
     double e0;
 
     //variables for matrix solve
@@ -84,26 +86,23 @@ void animate_implicit<2>(
         V_flat(2 * i + 1) = V(i, 1);
         f_ext_flat(2 * i) = f_ext(i, 0);
         f_ext_flat(2 * i + 1) = f_ext(i, 1);
-
         X_curr(i, 0) = X(i, 0);
         X_curr(i, 1) = X(i, 1);
         J_curr(i) = J(i);
     }
 
     // x hat
-    x_hat = X_flat + dt * V_flat + dt * dt * f_ext_flat;
+    x_hat = X_flat + dt * V_flat + dt_sqr * f_ext_flat;
     
     //M diagonal of particle masses
     M = MatrixXd::Identity(2 * n, 2 * n) * m;
-
    
     //V_block diagonal of particle volumes
     V_b = MatrixXd::Identity(n, n) * vol;
     V_b_inv = MatrixXd::Identity(n, n) / vol;
 
     //H
-    H = kappa * dt * dt * V_b;
-
+    H = kappa_dt_sqr * V_b;
     
     for (int it = 0; it < iters; it++) {
         // Flatten current position matrix
@@ -112,8 +111,6 @@ void animate_implicit<2>(
             X_flat(2 * i + 1) = X_curr(i, 1);
         }
         
-        //e0 = ((X_flat - x_hat).transpose() * M * (X_flat - x_hat) + 0.5 * kappa * dt * dt * (J_curr - MatrixXd::Constant(n, 1, 1)).transpose() * (J_curr - MatrixXd::Constant(n, 1, 1)))(0, 0);
-
         //B
         B.setZero();
         double fac = 10/7/M_PI/h/h/rho_0;
@@ -138,42 +135,37 @@ void animate_implicit<2>(
     
 
         // Jx rho(x)/rho_0
-        Jx.setZero();
-        for (int i = 0; i < n; i++){
-            for (int j = 0; j < n; j++){
-                double r = (X_curr.row(j) - X_curr.row(i)).norm();
-                double sig = 10/7/M_PI/h/h/rho_0;
+        auto Jx_func = [&](const VectorXd& x, VectorXd& Jx) {
+            Jx.setZero();
+            double sig = 10/7/M_PI/h/h/rho_0;
+            for (int i = 0; i < n; i++){
+                for (int j = 0; j < n; j++){
+                    auto& xi = x.segment<2>(2 * i);
+                    auto& xj = x.segment<2>(2 * j);
+                    double r = (xj - xi).norm();
 
-                if (r <= 1 && r > 0){
-                    Jx(i) += m * (1 - 1.5 * r * r *(1 - 0.5 *r)) * sig;
-                }
-                else if (r > 1 && r <= 2){
-                    Jx(i) += m * (2-r)*(2-r)*(2-r) * sig /4;
+                    if (r <= 1 && r > 0){
+                        Jx(i) += m * (1 - 1.5 * r * r *(1 - 0.5 *r)) * sig;
+                    }
+                    else if (r > 1 && r <= 2){
+                        Jx(i) += m * (2-r)*(2-r)*(2-r) * sig /4;
+                    }
                 }
             }
-        }
+        };
+        Jx_func(X_flat, Jx);
 
-        std::cout << "block" << std::endl;
         A = M + B.transpose() * V_b_inv * H * V_b_inv *B;
-        b = -M * (X_flat - x_hat) + B.transpose()* V_b_inv* kappa * dt * dt * (J_curr - MatrixXd::Constant(n, 1, 1)) - V_b_inv*H*V_b_inv*(J_curr-Jx);
-        //A.block(0, 0, 2 * n, 2 * n) = M;
-        //A.block(0, 3 * n, 2 * n, n) = B.transpose();
-        //A.block(2 * n, 2 * n, n, n) = H;
-        //A.block(n, 3*n, n, n) = V_b;
-        //A.block(3*n, 0, n, 2 * n) = B;
-        //A.block(3*n, n, n, n) = V_b;
-        
-        //b.block(0, 0, 2*n, 1) = M * (X_flat - x_hat);
-        //b.block(2 * n, 0, n, 1) = kappa * dt * dt * (J - MatrixXd::Constant(n, 1, 1));
-        //b.block(3 * n, 0, n, 1) = J - Jx;
-        // TODO: set up Ax = b
-        // 
+        b = -M * (X_flat - x_hat) 
+          + B.transpose()* V_b_inv * kappa_dt_sqr * (J_curr - MatrixXd::Constant(n, 1, 1))
+          - V_b_inv*H*V_b_inv*(J_curr-Jx);
+
         //solve matrix multiplication
         MatrixXd sol;
         sol.resize(2 * n, 1);
     
         std::cout << "start solve" << std::endl;
-        sol = A.colPivHouseholderQr().solve(b);
+        sol = A.llt().solve(b);
 
         VectorXd X_new_flat, delta_X, J_new, delta_J, lambda;
         X_new_flat.resize(n*2);
@@ -191,39 +183,44 @@ void animate_implicit<2>(
         std::cout << "solved" << std::endl;
         delta_X = sol;
         delta_J = V_b_inv * (-(J_curr-Jx) - (B * sol));
-        lambda = -V_b_inv * kappa * dt * dt * (J_curr - MatrixXd::Constant(n, 1, 1)) \
+        lambda = -V_b_inv * kappa_dt_sqr * (J_curr - MatrixXd::Constant(n, 1, 1)) \
         + V_b_inv * H * V_b_inv * (J_curr - Jx) +  V_b_inv * H * V_b_inv * B * sol;
 
         //do line search
         double alpha = 1.0;
-        
-        e0 = 0.5 * (X_flat - x_hat).transpose() * M * (X_flat - x_hat)
-        + 0.5 * kappa * dt * dt * (J_curr - MatrixXd::Constant(n, 1, 1)).squaredNorm()
-        + lambda.dot(J_curr - Jx);
 
-        double e_new = e0 + 1;
-        double e1, e2, e3;
+        // Energy lambda function for use in line search
+        auto energy_func = [&](double alpha) {
+            X_new_flat = X_flat + alpha * delta_X;
+            J_new = J_curr + alpha * delta_J;
+
+            Jx_func(X_new_flat, Jx);
+
+            // Inertial energy
+            double e_i = (X_new_flat - x_hat).transpose() * M
+                       * (X_new_flat - x_hat);
+            // Mixed potential energy
+            double e_psi = 0.5 * kappa_dt_sqr
+                         * (J_new - MatrixXd::Constant(n, 1, 1)).squaredNorm();
+            // Mixed constraint energy
+            Jx_func(X_new_flat, Jx);
+            double e_c = lambda.dot(J_new - Jx);
+            return e_i + e_psi + e_c;
+        };
+        
+        e0 = energy_func(0);
+        double e_new = energy_func(1.0);
+
         while (e_new > e0 && alpha > 1e-6){ 
             std::cout << "alpha: " << alpha << std::endl;
-            X_new_flat = X_flat + delta_X * alpha;
-            J_new = J_curr + delta_J * alpha;
-            //calculate energy
-            
-            e1 = 0.5 * (X_new_flat - x_hat).transpose() * M * (X_new_flat - x_hat);
-            e2 = 0.5 * kappa * dt * dt * (J_new - MatrixXd::Constant(n, 1, 1)).squaredNorm(); 
-            e3 = lambda.dot(J_new - Jx);
-            alpha = alpha/2;
-            e_new = e1 + e2 + e3;
+            alpha *= 0.5;
+            e_new = energy_func(alpha);
         }
-
         
         // std::cout << X_new_flat - X_flat << std::endl;
         std::cout << "alpha: " << alpha << std::endl;
         // std::cout << "e_new: " << e_new << std::endl;
         // std::cout << "e0: " << e0 << std::endl;
-        //std::cout << "e1: " << e1 << std::endl;
-        //std::cout << "e2: " << e2 << std::endl;
-        // std::cout << "e3: " << e3 << std::endl;
         std::cout << (X_new_flat - X_flat).norm() << std::endl;
 
         for (int i = 0; i < n; i++) {
@@ -232,7 +229,6 @@ void animate_implicit<2>(
             J_curr(i) = J_new(i);
         }
     }        
-
 
     V = (X_curr-X)/dt;
     X = X_curr;
