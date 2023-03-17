@@ -23,9 +23,9 @@ void animate_implicit<2>(
     ){
     int n = numofparticles;
     double kappa = 1*10000;//100000;
-    double rho_0 = 1; //define later
+    double rho_0 = 50; //define later
     double m = 1;
-    double h = 0.1; // h for particle distance
+    double h = 2; // h for particle distance
     double vol = m/rho_0;
 
     const double kappa_dt_sqr = kappa * dt * dt;
@@ -116,7 +116,7 @@ void animate_implicit<2>(
         double fac = 10/7/M_PI/h/h/rho_0;
         for (int i = 0; i < n; i ++){
             for (int j = 0; j < n; j++){
-                double q = (X_curr.row(j) - X_curr.row(i)).norm();
+                double q = (X_curr.row(j) - X_curr.row(i)).norm()/h;
                 MatrixXd dc_dx;
                 dc_dx.resize(1, 2);
                 dc_dx.setZero();
@@ -132,7 +132,7 @@ void animate_implicit<2>(
 
             }
         }
-    
+        
 
         // Jx rho(x)/rho_0
         auto Jx_func = [&](const VectorXd& x, VectorXd& Jx) {
@@ -142,9 +142,9 @@ void animate_implicit<2>(
                 for (int j = 0; j < n; j++){
                     auto& xi = x.segment<2>(2 * i);
                     auto& xj = x.segment<2>(2 * j);
-                    double r = (xj - xi).norm();
+                    double r = (xj - xi).norm()/h;
 
-                    if (r <= 1 && r > 0){
+                    if (r <= 1 && r >= 0){
                         Jx(i) += m * (1 - 1.5 * r * r *(1 - 0.5 *r)) * sig;
                     }
                     else if (r > 1 && r <= 2){
@@ -154,6 +154,7 @@ void animate_implicit<2>(
             }
         };
         Jx_func(X_flat, Jx);
+        std::cout << "Jx = " << Jx(5) << " " << Jx(16) << " " << Jx(24)  << std::endl;
 
         A = M + B.transpose() * V_b_inv * H * V_b_inv *B;
         b = -M * (X_flat - x_hat) 
@@ -167,23 +168,33 @@ void animate_implicit<2>(
         std::cout << "start solve" << std::endl;
         sol = A.llt().solve(b);
 
-        VectorXd X_new_flat, delta_X, J_new, delta_J, lambda;
+        VectorXd X_new_flat, delta_X, J_new, delta_J, lambda, lambda_1, lambda_2, lambda_3;
         X_new_flat.resize(n*2);
         delta_X.resize(n*2);
         J_new.resize(n);
         delta_J.resize(n);
         lambda.resize(n);
+        lambda_1.resize(n);
+        lambda_2.resize(n);
+        lambda_3.resize(n);
 
         X_new_flat.setZero();
         delta_X.setZero();
         J_new.setZero();
         delta_J.setZero();
         lambda.setZero();
+        lambda_1.setZero();
+        lambda_2.setZero();
+        lambda_3.setZero();
 
         std::cout << "solved" << std::endl;
         delta_X = sol;
         delta_J = V_b_inv * (-(J_curr-Jx) - (B * sol));
-        lambda = -V_b_inv * kappa_dt_sqr * (J_curr - MatrixXd::Constant(n, 1, 1)) \
+        lambda_1 = -V_b_inv * kappa_dt_sqr * (J_curr - MatrixXd::Constant(n, 1, 1));
+        lambda_2 = V_b_inv * H * V_b_inv * (J_curr - Jx);
+        lambda_3 = V_b_inv * H * V_b_inv * B * delta_X;
+        lambda = lambda_1 + lambda_2 + lambda_3;
+        //lambda = -V_b_inv * kappa_dt_sqr * (J_curr - MatrixXd::Constant(n, 1, 1)) \
         + V_b_inv * H * V_b_inv * (J_curr - Jx) +  V_b_inv * H * V_b_inv * B * sol;
 
         //do line search
@@ -211,8 +222,8 @@ void animate_implicit<2>(
         e0 = energy_func(0);
         double e_new = energy_func(1.0);
 
-        while (e_new > e0 && alpha > 1e-6){ 
-            std::cout << "alpha: " << alpha << std::endl;
+        while (e_new > e0 && alpha > 1e-10){ 
+            //std::cout << "alpha: " << alpha << std::endl;
             alpha *= 0.5;
             e_new = energy_func(alpha);
         }
@@ -221,7 +232,15 @@ void animate_implicit<2>(
         std::cout << "alpha: " << alpha << std::endl;
         // std::cout << "e_new: " << e_new << std::endl;
         // std::cout << "e0: " << e0 << std::endl;
-        std::cout << (X_new_flat - X_flat).norm() << std::endl;
+        std::cout << "delta_X = " << (X_new_flat - X_flat).norm() << std::endl;
+        std::cout << "delta_J = " << (J_new - J_curr).norm() << std::endl;
+        std::cout << "J_curr = " << Jx(5) << " " << J_curr(16) << " " << J_curr(24)  << std::endl;
+        std::cout << "J_new = " << Jx(5) << " " << J_new(16) << " " << J_new(24)  << std::endl;
+        std::cout << "Jx = " << Jx(5) << " " << Jx(16) << " " << Jx(24)  << std::endl;
+        std::cout << "lambda1 = " << lambda_1(5) << " " << lambda_1(16) << " " << lambda_1(24)  << std::endl;
+        std::cout << "lambda2 = " << lambda_2(5) << " " << lambda_2(16) << " " << lambda_2(24)  << std::endl;
+        std::cout << "lambda3 = " << lambda_3(5) << " " << lambda_3(16) << " " << lambda_3(24)  << std::endl;
+        std::cout << "lambda = " << lambda(5) << " " << lambda(16) << " " << lambda(24)  << std::endl;
 
         for (int i = 0; i < n; i++) {
             X_curr(i, 0) = X_new_flat(2*i);

@@ -26,7 +26,7 @@ int numofparticles; //number of particles
 Vector2d lower_bound;
 Vector2d upper_bound;
 
-int iters = 80;
+int iters = 5;
 double dt = 0.1;
 
 void callback() {
@@ -57,7 +57,8 @@ void callback() {
     //animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     //animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     animate_implicit<2>(q, q_dot, J, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    psCloud->updatePointPositions2D(q);
+    //psCloud->updatePointPositions2D(q);
+    psCloud->addVectorQuantity("velocity", q_dot, polyscope::VectorType::STANDARD)->setEnabled(true);
     ++frame;
     std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
@@ -120,9 +121,9 @@ int main(int argc, char *argv[]){
   J.setConstant(1);
   // Create point cloud polyscope object
   psCloud = polyscope::registerPointCloud2D("particles", q);
-
+  //psCloud->addVectorQuantity("velocity", q, polyscope::VectorType::STANDARD);
   // set some options
-  psCloud->setPointRadius(0.015);
+  psCloud->setPointRadius(0.005);
 
   // If rendering becomes slow, enable this
   // psCloud->setPointRenderMode(polyscope::PointRenderMode::Quad);
