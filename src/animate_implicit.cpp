@@ -3,6 +3,8 @@
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <iostream>
+#include "CompactNSearch"
+
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -30,8 +32,6 @@ void animate_implicit<2>(
 
     const double kappa_dt_sqr = kappa * dt * dt;
     const double dt_sqr = dt * dt;
-
-    
     MatrixXd f_ext(n, 2);
     f_ext.setZero();
     f_ext.col(1).setConstant(-9.8);
@@ -133,8 +133,6 @@ void animate_implicit<2>(
             }
         }
         
-
-        // Jx rho(x)/rho_0
         auto Jx_func = [&](const VectorXd& x, VectorXd& Jx) {
             Jx.setZero();
             double sig = 10/7/M_PI/h/h/rho_0;
@@ -158,8 +156,8 @@ void animate_implicit<2>(
 
         A = M + B.transpose() * V_b_inv * H * V_b_inv *B;
         b = -M * (X_flat - x_hat) 
-          + B.transpose()* V_b_inv * kappa_dt_sqr * (J_curr - MatrixXd::Constant(n, 1, 1))
-          - V_b_inv*H*V_b_inv*(J_curr-Jx);
+          + B.transpose()* (V_b_inv * kappa_dt_sqr * (J_curr - VectorXd::Ones(n))
+          - V_b_inv*H*V_b_inv*(J_curr-Jx));
 
         //solve matrix multiplication
         MatrixXd sol;
