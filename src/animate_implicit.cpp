@@ -4,7 +4,7 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <iostream>
-#include "CompactNSearch"
+//#include "CompactNSearch"
 
 
 #define _USE_MATH_DEFINES
