@@ -57,10 +57,10 @@ void callback() {
     //animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     //animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     animate_implicit<2>(q, q_dot, J, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    //psCloud->updatePointPositions2D(q);
+    psCloud->updatePointPositions2D(q);
     psCloud->addVectorQuantity("velocity", q_dot, polyscope::VectorType::STANDARD)->setEnabled(true);
     ++frame;
-    std::cout <<"X = " << q << std:: endl;
+    // std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
   }
 
@@ -119,6 +119,20 @@ int main(int argc, char *argv[]){
   
   J.resize(numofparticles, 1);
   J.setConstant(1);
+
+  // Initialize J values
+  double h = 1;
+  double rho_0 = 25;
+  double fac = 10/7/M_PI/h/h/rho_0;
+
+  for (int i = 0; i < numofparticles; i++){
+    for (int j = 0; j < numofparticles; j++){
+        double r = (q.row(j) - q.row(i)).norm()/h;
+        J(i) += cubic_bspline(r, 1*fac);
+    }
+  }
+  std::cout << " J * rho: " << J.transpose() * rho_0 << std::endl;
+
   // Create point cloud polyscope object
   psCloud = polyscope::registerPointCloud2D("particles", q);
   //psCloud->addVectorQuantity("velocity", q, polyscope::VectorType::STANDARD);
