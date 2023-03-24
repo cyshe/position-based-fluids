@@ -131,7 +131,8 @@ int main(int argc, char *argv[]){
         J(i) += cubic_bspline(r, 1*fac);
     }
   }
-  std::cout << " J * rho: " << J.transpose() * rho_0 << std::endl;
+  std::cout << "Stop initializing J this way" << std::endl;
+  //std::cout << " J * rho: " << J.transpose() * rho_0 << std::endl;
 
   // Create point cloud polyscope object
   psCloud = polyscope::registerPointCloud2D("particles", q);

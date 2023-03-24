@@ -29,11 +29,12 @@ void animate_implicit<2>(
     ){
 
     int n = numofparticles;
-    double kappa = 1;//100000;
+    double kappa = 100;//100000;
     double rho_0 = 100; //define later
     double m = 1;
     double h = 1; // h for particle distance
-    double vol = m/rho_0;
+    double vol = 1;//m/rho_0;
+
 
     const double kappa_dt_sqr = kappa * dt * dt;
     const double dt_sqr = dt * dt;
@@ -46,11 +47,12 @@ void animate_implicit<2>(
     double e0;
 
     // Sparse matrices
-    SparseMatrix<double> A, M, B, H, V_b, V_b_inv;
+    SparseMatrix<double> A, M, B, H, V_b, V_b_inv, H_inv;
     A.resize(2 * n, 2 * n);
     M.resize(2 * n, 2 * n);
     B.resize(n, 2 * n);
     H.resize(n, n);
+    H_inv.resize(n, n);
     V_b.resize(n, n);
     V_b_inv.resize(n, n);
 
@@ -92,6 +94,8 @@ void animate_implicit<2>(
     // Hessian
     H.setIdentity();
     H *= kappa_dt_sqr * vol;
+    H_inv.setIdentity();
+    H_inv /= kappa_dt_sqr * vol;
 
     SimplicialLLT<SparseMatrix<double>> solver;
 
@@ -189,12 +193,13 @@ void animate_implicit<2>(
         delta_X = solver.solve(b);
 
         std::cout << "solved" << std::endl;
-        delta_J = V_b_inv * (Jx - J_curr - B * delta_X);
-        lambda = -V_b_inv * (H * delta_J + dpsi_dJ);
-        // lambda_1 = -V_b_inv * kappa_dt_sqr * (J_curr - MatrixXd::Constant(n, 1, 1));
-        // lambda_2 = V_b_inv * H * V_b_inv * (J_curr - Jx);
-        // lambda_3 = V_b_inv * H * V_b_inv * B * delta_X;
-        // lambda = lambda_1 + lambda_2 + lambda_3;
+        //delta_J = V_b_inv * (Jx - J_curr - B * delta_X);
+        //lambda = -V_b_inv * (H * delta_J + dpsi_dJ);
+        lambda_1 = -V_b_inv * kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
+        lambda_2 = V_b_inv * H * V_b_inv * (J_curr - Jx);
+        lambda_3 = V_b_inv * H * V_b_inv * B * delta_X;
+        lambda = lambda_1 + lambda_2 + lambda_3;
+        delta_J = -H_inv * (dpsi_dJ + V_b * lambda);
 
         //do line search
         double alpha = 1.0;
@@ -222,11 +227,11 @@ void animate_implicit<2>(
         e0 = energy_func(0);
         double e_new = energy_func(1.0);
 
-        while (e_new > e0 && alpha > 1e-10){ 
-            //std::cout << "alpha: " << alpha << std::endl;
-            alpha *= 0.5;
-            e_new = energy_func(alpha);
-        }
+        //while (e_new > e0 && alpha > 1e-10){ 
+        //    //std::cout << "alpha: " << alpha << std::endl;
+        //    alpha *= 0.5;
+        //    e_new = energy_func(alpha);
+        //}
         
         // std::cout << X_new_flat - X_flat << std::endl;
         std::cout << "alpha: " << alpha << std::endl;
