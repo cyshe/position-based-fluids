@@ -12,6 +12,9 @@
 #include <cmath>
 #include <igl/grid.h>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 using namespace Eigen;
 
 polyscope::PointCloud* psCloud;
