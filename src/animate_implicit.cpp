@@ -32,7 +32,7 @@ void animate_implicit<2>(
     double kappa = 100;//100000;
     double rho_0 = 100; //define later
     double m = 1;
-    double h = 1; // h for particle distance
+    double h = 0.1; // h for particle distance
     double vol = 1;//m/rho_0;
     double n_corr = 4; //n for s_corr in tensile instability term
 
@@ -167,70 +167,72 @@ void animate_implicit<2>(
                 auto& xi = X_flat.segment<2>(2 * i);
                 auto& xj = X_flat.segment<2>(2 * j);
                 double r = (xj - xi).norm()/h;
-
-                d2sc_dx2(2*i) += pow(cubic_bspline(r, m*fac), (n_corr-1)) *
-                    cubic_bspline_derivative(r, m*fac) * (xj(0) - xi(0)) / (r + 0.0001); 
+                if (r > 0){
+                    dscorr_dx(2*i) += 2 * pow(cubic_bspline(r, m*fac), (n_corr-1)) *
+                        cubic_bspline_derivative(r, m*fac) * (xi(0) - xj(0)) / (r*h + 0.0001); 
                 
-                d2sc_dx2(2*i+1) += pow(cubic_bspline(r, m*fac), (n_corr-1)) *
-                    cubic_bspline_derivative(r, m*fac) * (xj(1) - xi(1)) / (r + 0.0001); 
+                    dscorr_dx(2*i+1) += 2 * pow(cubic_bspline(r, m*fac), (n_corr-1)) *
+                        cubic_bspline_derivative(r, m*fac) * (xi(1) - xj(1)) / (r*h + 0.0001); 
 
-                d2sc_dx2(2*i, 2*j) += (n_corr-2) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
-                    pow(cubic_bspline_derivative(r, m*fac),2) * (xj(0) - xi(0)) * (xi(0) - xj(0))/ (r*r + 0.0001) -
-                    pow(cubic_bspline(r, m*fac), (n_corr-1)) *
-                    cubic_bspline_derivative(r, m*fac) / (r + 0.0001);
-                
-                d2sc_dx2(2*i, 2*j+1) += (n_corr-2) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
-                    pow(cubic_bspline_derivative(r, m*fac),2) * (xj(0) - xi(0)) * (xi(1) - xj(1)) / (r*r + 0.0001) -
-                    pow(cubic_bspline(r, m*fac), (n_corr-1)) *
-                    cubic_bspline_derivative(r, m*fac) / (r + 0.0001);
+                    d2sc_dx2(2*i, 2*j) += (n_corr-1) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
+                        pow(cubic_bspline_derivative(r, m*fac),2) * (xi(0) - xj(0)) * (xi(0) - xj(0))/ (r*h*r*h + 0.0001) -
+                        pow(cubic_bspline(r, m*fac), (n_corr-1)) *
+                        cubic_bspline_derivative(r, m*fac) / (r*h + 0.0001);
 
-                d2sc_dx2(2*i+1, 2*j) += (n_corr-2) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
-                    pow(cubic_bspline_derivative(r, m*fac),2) * (xj(1) - xi(1)) * (xi(0) - xj(0)) / (r*r + 0.0001) -
-                    pow(cubic_bspline(r, m*fac), (n_corr-1)) *
-                    cubic_bspline_derivative(r, m*fac) / (r + 0.0001);
+                    d2sc_dx2(2*i, 2*j+1) += (n_corr-1) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
+                        pow(cubic_bspline_derivative(r, m*fac),2) * (xi(0) - xj(0)) * (xj(1) - xi(1)) / (r*h*r*h + 0.0001);
 
-                d2sc_dx2(2*i+1, 2*j+1) += (n_corr-2) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
-                    pow(cubic_bspline_derivative(r, m*fac),2) * (xj(1) - xi(1)) * (xi(1) - xj(1)) / (r*r + 0.0001) -
-                    pow(cubic_bspline(r, m*fac), (n_corr-1)) *
-                    cubic_bspline_derivative(r, m*fac) / (r + 0.0001);
+                    d2sc_dx2(2*i+1, 2*j) += (n_corr-1) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
+                        pow(cubic_bspline_derivative(r, m*fac),2) * (xi(1) - xj(1)) * (xj(0) - xi(0)) / (r*r*h*h + 0.0001);
 
+                    d2sc_dx2(2*i+1, 2*j+1) += (n_corr-1) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
+                        pow(cubic_bspline_derivative(r, m*fac),2) * (xi(1) - xj(1)) * (xi(1) - xj(1)) / (r*r*h*h + 0.0001) -
+                        pow(cubic_bspline(r, m*fac), (n_corr-1)) *
+                        cubic_bspline_derivative(r, m*fac) / (r*h + 0.0001);
+                }
 
-                if (r < 1){
+                if (0 < r < 1){
                     d2sc_dx2(2*i, 2*j) += pow(cubic_bspline(r, m*fac), (n_corr-1)) 
-                        * ((m*fac) * (-3 + 9 * r/2)) * (xj(0) - xi(0)) * (xi(0) - xj(0)) / (r*r + 0.0001);
+                        * ((m*fac) * (-3 + 9 * r/2)) * (xj(0) - xi(0)) * (xi(0) - xj(0)) / (r*r*h*h + 0.0001);
                     
                     d2sc_dx2(2*i, 2*j+1) += pow(cubic_bspline(r, m*fac), (n_corr-1))
-                        * ((m*fac) * (-3 + 9 * r/2)) * (xj(0) - xi(0)) * (xi(0) - xj(0)) / (r*r + 0.0001);
+                        * ((m*fac) * (-3 + 9 * r/2)) * (xi(0) - xj(0)) * (xj(1) - xi(1)) / (r*r*h*h + 0.0001);
 
                     d2sc_dx2(2*i+1, 2*j) += pow(cubic_bspline(r, m*fac), (n_corr-1))
-                        * ((m*fac) * (-3 + 9 * r/2)) * (xj(1) - xi(1)) * (xi(0) - xj(0)) / (r*r + 0.0001);
-
+                        * ((m*fac) * (-3 + 9 * r/2)) * (xi(1) - xj(1)) * (xj(0) - xi(0)) / (r*r*h*h + 0.0001);
+                    
                     d2sc_dx2(2*i+1, 2*j+1) += pow(cubic_bspline(r, m*fac), (n_corr-1))
-                        * ((m*fac) * (-3 + 9 * r/2)) * (xj(1) - xi(1)) * (xi(1) - xj(1)) / (r*r + 0.0001);
+                        * ((m*fac) * (-3 + 9 * r/2)) * (xj(1) - xi(1)) * (xi(1) - xj(1)) / (r*r*h*h + 0.0001);
+                
                 }
                 else if (r < 2){
                     d2sc_dx2(2*i, 2*j) += pow(cubic_bspline(r, m*fac), (n_corr-1)) 
-                        * ((m*fac) * (3/2) * (2-r)) * (xj(0) - xi(0)) * (xi(0) - xj(0)) / (r*r + 0.0001);
+                        * ((m*fac) * (3/2) * (2-r)) * (xj(0) - xi(0)) * (xi(0) - xj(0)) / (r*r*h*h + 0.0001);
                     d2sc_dx2(2*i, 2*j+1) += pow(cubic_bspline(r, m*fac), (n_corr-1)) 
-                        * ((m*fac) * (3/2) * (2-r)) * (xj(0) - xi(0)) * (xi(0) - xj(0)) / (r*r + 0.0001);
+                        * ((m*fac) * (3/2) * (2-r)) * (xi(0) - xj(0)) * (xj(1) - xi(1)) / (r*r*h*h + 0.0001);
                     d2sc_dx2(2*i+1, 2*j) += pow(cubic_bspline(r, m*fac), (n_corr-1)) 
-                        * ((m*fac) * (3/2) * (2-r)) * (xj(1) - xi(1)) * (xi(0) - xj(0)) / (r*r + 0.0001);
+                        * ((m*fac) * (3/2) * (2-r)) * (xi(1) - xj(1)) * (xj(0) - xi(0)) / (r*r*h*h + 0.0001);
                     d2sc_dx2(2*i+1, 2*j+1) += pow(cubic_bspline(r, m*fac), (n_corr-1)) 
-                        * ((m*fac) * (3/2) * (2-r)) * (xj(1) - xi(1)) * (xi(1) - xj(1)) / (r*r + 0.0001);
+                        * ((m*fac) * (3/2) * (2-r)) * (xj(1) - xi(1)) * (xi(1) - xj(1)) / (r*r*h*h + 0.0001);
                 }
                 
             }
         }
-        dscorr_dx *= -0.1/pow(cubic_bspline(0.2, m*fac), n_corr) * n_corr;
-        d2sc_dx2 *= -0.1/pow(cubic_bspline(0.2, m*fac), n_corr) * n_corr;
+        dscorr_dx *= -0.1/pow(cubic_bspline(0.2, m*fac), n_corr) * n_corr * 2;
+        d2sc_dx2 *= -0.1/pow(cubic_bspline(0.2, m*fac), n_corr) * n_corr * 2;
     
         VectorXd dpsi_dJ = kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
+
 
         A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + d2sc_dx2.sparseView();
         b = -M * (X_flat - x_hat) - dscorr_dx
           + B.transpose() * (V_b_inv * dpsi_dJ
           + V_b_inv*H*V_b_inv*(Jx - J_curr));
 
+        std::cout << "d2sc_dx2 size" << d2sc_dx2.size() << std::endl;
+        std::cout << "dscorr_dx size" << dscorr_dx.size() << std::endl;
+        std::cout << "A size" << A.size() << std::endl;
+        std::cout << "b size" << b.size() << std::endl;
         std::cout << "b - inertial: " << (M * (X_flat - x_hat) ).norm() << std::endl;
         std::cout << "b - tensile instability: " << dscorr_dx.norm() << std::endl;
         std::cout << "b - elastic: " << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << std::endl;
