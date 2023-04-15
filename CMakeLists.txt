@@ -20,17 +20,31 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include)
 file(GLOB H_FILES ${PROJECT_SOURCE_DIR}/include/*.h)
 file(GLOB CPP_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
+
+
+# Eigen
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+
+include(FetchContent)
+FetchContent_Declare(
+    finite-diff
+    GIT_REPOSITORY https://github.com/zfergus/finite-diff.git
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(finite-diff)
+
 # Polyscope 
 add_subdirectory("deps/polyscope")
 
 #add_subdirectory("deps/CompactNSearch")
 
-# Eigen
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-
 #build executable 
 add_executable(${PROJECT_NAME} main.cpp ${CPP_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC polyscope Eigen3::Eigen)
+target_link_libraries(${PROJECT_NAME} PUBLIC finitediff::finitediff)
 
 add_executable(main_2d main_2d.cpp ${CPP_FILES})
 target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)# CompactNSearch)
+target_link_libraries(main_2d PUBLIC finitediff::finitediff)
+target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)

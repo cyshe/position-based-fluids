@@ -96,7 +96,7 @@ int main(int argc, char *argv[]){
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions
-  double l = 20;
+  double l = 5;
   numofparticles = l* 2 *l;
 
   // (-1, -1), (1.2, 0.1) 800 particles

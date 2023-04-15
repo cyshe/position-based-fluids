@@ -3,6 +3,8 @@
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <Eigen/Sparse>
+#include <finitediff.hpp>
+#include <cassert>
 #include <iostream>
 //#include "CompactNSearch"
 
@@ -32,7 +34,7 @@ void animate_implicit<2>(
     double kappa = 100;//100000;
     double rho_0 = 100; //define later
     double m = 1;
-    double h = 0.1; // h for particle distance
+    double h = 1; // h for particle distance
     double vol = 1;//m/rho_0;
     double n_corr = 4; //n for s_corr in tensile instability term
 
@@ -154,11 +156,11 @@ void animate_implicit<2>(
                 }
             }
         };
+
         Jx_func(X_flat, Jx);
 
         std::cout << "Jx = " << Jx(5) << " " << Jx(16) << " " << Jx(24)  << std::endl;
-
-
+        
         dscorr_dx.setZero();
         d2sc_dx2.setZero();
 
@@ -168,10 +170,10 @@ void animate_implicit<2>(
                 auto& xj = X_flat.segment<2>(2 * j);
                 double r = (xj - xi).norm()/h;
                 if (r > 0){
-                    dscorr_dx(2*i) += 2 * pow(cubic_bspline(r, m*fac), (n_corr-1)) *
+                    dscorr_dx(2*i) += pow(cubic_bspline(r, m*fac), (n_corr-1)) *
                         cubic_bspline_derivative(r, m*fac) * (xi(0) - xj(0)) / (r*h + 0.0001); 
                 
-                    dscorr_dx(2*i+1) += 2 * pow(cubic_bspline(r, m*fac), (n_corr-1)) *
+                    dscorr_dx(2*i+1) += pow(cubic_bspline(r, m*fac), (n_corr-1)) *
                         cubic_bspline_derivative(r, m*fac) * (xi(1) - xj(1)) / (r*h + 0.0001); 
 
                     d2sc_dx2(2*i, 2*j) += (n_corr-1) * pow(cubic_bspline(r, m*fac), (n_corr-2)) *
@@ -221,6 +223,37 @@ void animate_implicit<2>(
         dscorr_dx *= -0.1/pow(cubic_bspline(0.2, m*fac), n_corr) * n_corr * 2;
         d2sc_dx2 *= -0.1/pow(cubic_bspline(0.2, m*fac), n_corr) * n_corr * 2;
     
+        // Check finite difference
+        fd::AccuracyOrder accuracy = fd::SECOND;
+        
+        const auto scorr = [&](const Eigen::VectorXd& x) -> double {
+            double sc = 0; 
+            for (int i = 0; i < n; i++){
+                for (int j = 0; j < n; j++){
+                    auto& xi = x.segment<2>(2 * i);
+                    auto& xj = x.segment<2>(2 * j); 
+                    double r = (xj - xi).norm()/h;
+                    sc += -0.1 * pow(cubic_bspline(r, m*fac)/cubic_bspline(0.2, m*fac), n_corr);
+                }
+            }
+            return sc;
+        };
+
+        Eigen::VectorXd fdscorr_dx;
+        fd::finite_gradient(X_flat, scorr, fdscorr_dx, accuracy);
+        std::cout << "Norm Gradient: " << (fdscorr_dx-dscorr_dx).norm() << std::endl;
+        std::cout << "finite diff: " << fd::compare_gradient(fdscorr_dx, dscorr_dx, 1e-6) << std::endl;
+        std::cout << fdscorr_dx(10) << " " << dscorr_dx(10) << std::endl;
+        std::cout << fdscorr_dx(42) << " " << dscorr_dx(42) << std::endl;
+
+        Eigen::MatrixXd fd2sc_dx2;
+        fd::finite_hessian(X_flat, scorr, fd2sc_dx2, accuracy);
+        std::cout << "Norm Hessian: "<< (fd2sc_dx2-dscorr_dx).norm() << std::endl;
+        std::cout << "finite diff: " << fd::compare_hessian(fd2sc_dx2, d2sc_dx2, 1e-6) << std::endl;
+        std::cout << fd2sc_dx2(10,5) << " " << d2sc_dx2(10,5) << std::endl;
+        std::cout << fd2sc_dx2(42,1) << " " << d2sc_dx2(42,1) << std::endl;
+
+
         VectorXd dpsi_dJ = kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
 
 
