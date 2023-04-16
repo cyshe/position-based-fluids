@@ -31,7 +31,7 @@ void animate_implicit<2>(
     ){
 
     int n = numofparticles;
-    double kappa = 2;//100000;
+    double kappa = 1;//100000;
     double rho_0 = 1; //define later
     double m = 1;
     double h = 0.1; // h for particle distance
