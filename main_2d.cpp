@@ -96,7 +96,7 @@ int main(int argc, char *argv[]){
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions
-  double l = 5;
+  double l = 15;
   numofparticles = l* 2 *l;
 
   // (-1, -1), (1.2, 0.1) 800 particles
@@ -124,17 +124,21 @@ int main(int argc, char *argv[]){
   J.setConstant(1);
 
   // Initialize J values
-  double h = 1;
-  double rho_0 = 25;
-  double fac = 10/7/M_PI/h/h/rho_0;
+  double h = 0.1;
+  double rho_0 = 1;
+  double fac = 10/7/M_PI;
 
+  J.setZero();
   for (int i = 0; i < numofparticles; i++){
     for (int j = 0; j < numofparticles; j++){
         double r = (q.row(j) - q.row(i)).norm()/h;
-        J(i) += cubic_bspline(r, 1*fac);
+        J(i) += cubic_bspline(r, fac) / rho_0;
     }
   }
   std::cout << "Stop initializing J this way" << std::endl;
+  std::cout << "initializing J with h = " << h << " and rho_0 = " << rho_0 << std::endl;
+  std::cout << "J first 20 " << J.head(20) << std::endl;
+  std::cout << "Jx = " << J(5) << " " << J(16) << " " << J(24)  << std::endl;
   //std::cout << " J * rho: " << J.transpose() * rho_0 << std::endl;
 
   // Create point cloud polyscope object
