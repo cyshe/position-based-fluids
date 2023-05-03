@@ -205,7 +205,7 @@ void animate_implicit<2>(
 
         VectorXd dpsi_dJ = kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
         A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + d2sc_dx2.sparseView() + d2c_dx2.sparseView(); 
-        b = -(M+ d2c_dx2.sparseView()) * (X_flat - x_hat) - dscorr_dx
+        b = -(M) * (X_flat - x_hat) - dscorr_dx
           + B.transpose() * (V_b_inv * dpsi_dJ
           + V_b_inv*H*V_b_inv*(Jx - J_curr));
 
