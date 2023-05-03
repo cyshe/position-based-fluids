@@ -30,7 +30,7 @@ Vector2d lower_bound;
 Vector2d upper_bound;
 
 int iters = 5;
-double dt = 0.1;
+double dt = 0.03;
 
 void callback() {
 
@@ -65,6 +65,7 @@ void callback() {
     ++frame;
     // std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
+    //polyscope::screenshot();
   }
 
   // Resets the simulation
@@ -135,6 +136,8 @@ int main(int argc, char *argv[]){
         J(i) += cubic_bspline(r, fac) / rho_0;
     }
   }
+
+  
   std::cout << "Stop initializing J this way" << std::endl;
   std::cout << "initializing J with h = " << h << " and rho_0 = " << rho_0 << std::endl;
   std::cout << "J first 20 " << J.head(20) << std::endl;
@@ -166,6 +169,10 @@ int main(int argc, char *argv[]){
   polyscope::registerCurveNetwork2D("boundary", V_bbox, E_bbox);
   polyscope::getCurveNetwork("boundary")->setColor(glm::vec3(1.0,0.0,0.0));
   polyscope::getCurveNetwork("boundary")->setRadius(0.001);
+
+
+  // Take a screenshot
+  //polyscope::screenshot();
 
   // Show the gui
   polyscope::show();
