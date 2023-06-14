@@ -13,7 +13,9 @@ void animate_implicit(
     const Eigen::Matrix<double, DIM, 1> & up_bound,
     const int numofparticles,
     const int iters, 
-    const double dt
+    const double dt,
+    const double kappa,
+    const bool fd_check = false
 );
 
 // Computes derivative of norm of a vector

@@ -7,6 +7,8 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
+#include <chrono>
+
 //#include "CompactNSearch"
 
 
@@ -28,11 +30,12 @@ void animate_implicit<2>(
     const Eigen::Matrix<double, 2, 1> & up_bound,
     const int numofparticles,
     const int iters, 
-    const double dt
+    const double dt,
+    const double kappa,
+    const bool fd_check
     ){
 
     int n = numofparticles;
-    double kappa = 70;// 1000;//100000;
     double rho_0 = 1; //define later
     double m = 1;
     double h = 0.1; // h for particle distance
@@ -45,7 +48,7 @@ void animate_implicit<2>(
     const double dt_sqr = dt * dt;
     MatrixXd f_ext(n, 2);
     f_ext.setZero();
-    f_ext.col(1).setConstant(-0.8);
+    f_ext.col(1).setConstant(-9.8);
     
     VectorXd x_hat = VectorXd::Zero(2 * n);
     
@@ -61,9 +64,9 @@ void animate_implicit<2>(
     V_b.resize(n, n);
     V_b_inv.resize(n, n);
 
-    MatrixXd d2sc_dx2, d2c_dx2;
+    MatrixXd d2sc_dx2; //d2c_dx2
     d2sc_dx2.resize(2 * n, 2 * n);
-    d2c_dx2.resize(2 * n, 2 * n);
+    //d2c_dx2.resize(2 * n, 2 * n);
 
     // Vectors
     VectorXd b = VectorXd::Zero(2 * n);
@@ -113,6 +116,7 @@ void animate_implicit<2>(
     // Newton solver
     for (int it = 0; it < iters; it++) {
         // Flatten current position matrix
+        //auto begin = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < n; i++) {
             X_flat(2 * i) = X_curr(i, 0);
             X_flat(2 * i + 1) = X_curr(i, 1);
@@ -153,15 +157,20 @@ void animate_implicit<2>(
 
         Jx_func(X_flat, Jx);
 
-        std::cout << "Jx = " << Jx(5) << " " << Jx(16) << " " << Jx(24)  << std::endl;
+        //std::cout << "Jx = " << Jx(5) << " " << Jx(16) << " " << Jx(24)  << std::endl;
         
-        d2c_dx2.setZero();
+        //d2c_dx2.setZero();
         dscorr_dx.setZero();
         d2sc_dx2.setZero();
+        //auto end = std::chrono::high_resolution_clock::now();
+        //auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
 
+        //printf("Time measured 1: %.3f seconds.\n", elapsed.count() * 1e-9);
+
+        //begin = std::chrono::high_resolution_clock::now();
 
         double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
-        double k_spring = dt_sqr * 1; //500000000;
+        double k_spring = dt_sqr * 100; //500000000;
         double W_dq = cubic_bspline(dq, fac);
         for (int i = 0; i < n; i++){
             for (int j = 0; j < n; j++){
@@ -174,8 +183,8 @@ void animate_implicit<2>(
                 if (Wij < eps) continue;
 
                 if (i == 0) {
-                    std::cout << "j = " << j << " r = " << r << " W(r) = " << cubic_bspline(r, fac) 
-                        << " W_dq " << W_dq << std::endl;
+                //    std::cout << "j = " << j << " r = " << r << " W(r) = " << cubic_bspline(r, fac) 
+                //        << " W_dq " << W_dq << std::endl;
                 }
                 // Changing the tensile instability to a simpler spring energy
                 // E(x) = 0.5 * k_spring * \sum_i \sum_j (W_ij - W_dq)^2
@@ -188,46 +197,97 @@ void animate_implicit<2>(
 
                 // Spring energy derivative
                 dscorr_dx.segment<2>(2*i) += (Wij - W_dq) * Wij_grad;
-
+                //std::cout << "i: " << i << "j: " << j << std::endl;
+                //std::cout << (Wij - W_dq) * Wij_grad << std::endl;
                 // Spring energy second derivative
                 // Computing dWij/(dxi dxj) 
                 Matrix2d d2r_dx2 = norm_hessian<2>((xj-xi)/h, r) / h / h;
                 Matrix2d Wij_hess = cubic_bspline_hessian(r, m*fac) * dr_dx * dr_dx.transpose() 
                     + cubic_bspline_derivative(r, m*fac) * d2r_dx2;
                 Matrix2d hess =  (Wij - W_dq) * Wij_hess + Wij_grad * Wij_grad.transpose();
-                d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i);
-                d2sc_dx2.block<2, 2>(2*i, 2*j) = -hess;         
+                //d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
+                //d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
+
+                d2sc_dx2.block<2, 2>(2*i, 2*j) = -hess;     
+                
             }
         }
         dscorr_dx *= k_spring * 2.0; 
         d2sc_dx2 *= k_spring * 2.0;
+        
 
+        if (fd_check) {
+            fd::AccuracyOrder accuracy = fd::SECOND;
+            
+            const auto scorr = [&](const Eigen::VectorXd& x) -> double {
+                double sc = 0; 
+                for (int i = 0; i < n; i++){
+                    for (int j = 0; j < n; j++){
+                        if (i == j) continue;
+                        const auto& xi = X_flat.segment<2>(2 * i);
+                        const auto& xj = X_flat.segment<2>(2 * j);
+                        double r = (xj - xi).norm()/h;
+                        double eps = 1e-6;
+                        double Wij = cubic_bspline(r, m*fac);
+                        //if (Wij < eps) continue;
+                        sc += 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
+                        std::cout<< "sc" << sc << std::endl;
+                    }
+                }
+                return sc;
+            };
+
+            Eigen::VectorXd fdscorr_dx;
+            fd::finite_gradient(X_flat, scorr, fdscorr_dx, accuracy, 1.0e-5);
+            std::cout << "Gradient Norm: " << (fdscorr_dx).norm() << std::endl;
+            std::cout << fdscorr_dx.head(10) << std::endl;
+            std::cout << dscorr_dx.head(10) << std::endl;
+
+            Eigen::MatrixXd fd2sc_dx2;
+            fd::finite_hessian(X_flat, scorr, fd2sc_dx2, accuracy, 1.0e-5);
+            std::cout << "Hessian Norm: " << (fd2sc_dx2 - d2sc_dx2).norm() << std::endl;
+            std::cout << fd2sc_dx2(10,5) << " " << d2sc_dx2(10,5) << std::endl;
+            std::cout << fd2sc_dx2.row(0) << std::endl; 
+            std::cout << d2sc_dx2.row(0) << std::endl;
+        }
+        //end = std::chrono::high_resolution_clock::now();
+        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+
+        //printf("Time measured 2: %.3f seconds.\n", elapsed.count() * 1e-9);
+
+        //begin = std::chrono::high_resolution_clock::now();
+
+        //std::cout << "symmetry" << (d2c_dx2 - d2c_dx2.transpose()).norm() << std::endl;
 
         VectorXd dpsi_dJ = kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
-        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + d2sc_dx2.sparseView() + d2c_dx2.sparseView(); 
+        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + d2sc_dx2.sparseView();// + d2c_dx2.sparseView(); 
         b = -(M) * (X_flat - x_hat) - dscorr_dx
           + B.transpose() * (V_b_inv * dpsi_dJ
           + V_b_inv*H*V_b_inv*(Jx - J_curr));
 
-        std::cout << "d2sc_dx2 size" << d2sc_dx2.size() << std::endl;
-        std::cout << "dscorr_dx size" << dscorr_dx.size() << std::endl;
-        std::cout << "A size" << A.size() << std::endl;
-        std::cout << "b size" << b.size() << std::endl;
+        //std::cout << "d2sc_dx2 size" << d2sc_dx2.size() << std::endl;
+        //std::cout << "dscorr_dx size" << dscorr_dx.size() << std::endl;
+        //std::cout << "A size" << A.size() << std::endl;
+        //std::cout << "b size" << b.size() << std::endl;
         std::cout << "b - inertial: " << (M * (X_flat - x_hat) ).norm() << std::endl;
         std::cout << "b - tensile instability: " << dscorr_dx.norm() << std::endl;
         std::cout << "b - elastic: " << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << std::endl;
         std::cout << "b - constraint: " << (B.transpose()* (V_b_inv*H*V_b_inv*(J_curr-Jx))).norm() << std::endl;
-        
-        output_file << (M * (X_flat - x_hat) ).norm()<< ", " 
-        << dscorr_dx.norm() << ", " 
-        << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << ", "
-        << (B.transpose()* (V_b_inv*H*V_b_inv*(J_curr-Jx))).norm() << std::endl;
-        
+
+
         std::cout << "start solve" << std::endl;
         solver.compute(A);
         if (solver.info() != Success) {
             std::cout << "decomposition failed" << std::endl;
+            exit(1);
         }
+
+        //end = std::chrono::high_resolution_clock::now();
+        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+
+        //printf("Time measured 3: %.3f seconds.\n", elapsed.count() * 1e-9);
+
+        //begin = std::chrono::high_resolution_clock::now();
 
         VectorXd X_new_flat, delta_X, J_new, delta_J, lambda_1, lambda_2, lambda_3;
         X_new_flat.resize(n*2);
@@ -254,6 +314,12 @@ void animate_implicit<2>(
         lambda = lambda_1 + lambda_2 + lambda_3;
         delta_J = -H_inv * (dpsi_dJ + V_b * lambda);
 
+        //end = std::chrono::high_resolution_clock::now();
+        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+
+        //printf("Time measured 4: %.3f seconds.\n", elapsed.count() * 1e-9);
+
+        //begin = std::chrono::high_resolution_clock::now();
         //do line search
         double alpha = 1.0;
 
@@ -271,13 +337,31 @@ void animate_implicit<2>(
             // Mixed constraint energy
             Jx_func(X_new_flat, Jx);
             double e_c = lambda.dot(J_new - Jx);
+            
+            //E(x) = 0.5 * k_spring * \sum_i \sum_j (W_ij - W_dq)^2
+            double e_s = 0;
+            double W_dq = cubic_bspline(dq, fac);
+            for (int i = 0; i < n; i++){
+                for (int j = 0; j < n; j++){
+                    if (i == j) continue;
+                    const auto& xi = X_new_flat.segment<2>(2 * i);
+                    const auto& xj = X_new_flat.segment<2>(2 * j);
+                    double r = (xj - xi).norm()/h;
+                    double eps = 1e-6;
+                    double Wij = cubic_bspline(r, m*fac);
+                    if (Wij < eps) continue;
+                    e_s += 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
+                }
+            }
             //std::cout << "e_i: " << e_i << std::endl;
             //std::cout << "e_psi: " << e_psi << std::endl;
             //std::cout << "e_c: " << e_c << std::endl;
-            return e_i + e_psi + e_c;
+            //std::cout << "e_s: " << e_s << std::endl;
+            return e_i + e_psi + e_c + e_s;
         };
         
         e0 = energy_func(0);
+        std::cout << "e0: " << e0 << std::endl;
         double e_new = energy_func(1.0);
 
         while (e_new > e0 && alpha > 1e-10){ 
@@ -286,23 +370,50 @@ void animate_implicit<2>(
             e_new = energy_func(alpha);
         }
         
-        // std::cout << X_new_flat - X_flat << std::endl;
-        std::cout << "alpha: " << alpha << std::endl;
-        std::cout << "e_new: " << e_new << std::endl;
-        std::cout << "e0: " << e0 << std::endl;
-        std::cout << "delta_X = " << (X_new_flat - X_flat).norm() << std::endl;
-        std::cout << "delta_J = " << (J_new - J_curr).norm() << std::endl;
-        std::cout << "lambda norm = " << lambda.norm() << std::endl;
-        std::cout << "J_curr = " << Jx(5) << " " << J_curr(16) << " " << J_curr(24)  << std::endl;
-        std::cout << "J_new = " << Jx(5) << " " << J_new(16) << " " << J_new(24)  << std::endl;
-        std::cout << "Jx = " << Jx(5) << " " << Jx(16) << " " << Jx(24)  << std::endl;
-        std::cout << "lambda = " << lambda(5) << " " << lambda(16) << " " << lambda(24)  << std::endl;
+        if (alpha < 1e-10 && it == 0){
+            std::cout << "line search failed" << std::endl;
+            SelfAdjointEigenSolver<MatrixXd> es;
+            es.compute(MatrixXd(A));
+            std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
+            //std::cout << delta_X << std::endl;
+            exit(1);
+        }
 
+//        SelfAdjointEigenSolver<MatrixXd> es;
+//        es.compute(MatrixXd(A));
+//        std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose() << std::endl;
+        
+        //end = std::chrono::high_resolution_clock::now();
+        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+
+        //printf("Time measured 5: %.3f seconds.\n", elapsed.count() * 1e-9);
+
+        
+        // std::cout << X_new_flat - X_flat << std::endl;
+        //std::cout << "alpha: " << alpha << std::endl;
+        //std::cout << "e_new: " << e_new << std::endl;
+        //std::cout << "e0: " << e0 << std::endl;
+        //std::cout << "delta_X = " << (X_new_flat - X_flat).norm() << std::endl;
+        //std::cout << "delta_J = " << (J_new - J_curr).norm() << std::endl;
+        //std::cout << "lambda norm = " << lambda.norm() << std::endl;
+        //std::cout << "J_curr = " << Jx(5) << " " << J_curr(16) << " " << J_curr(24)  << std::endl;
+        //std::cout << "J_new = " << Jx(5) << " " << J_new(16) << " " << J_new(24)  << std::endl;
+        //std::cout << "Jx = " << Jx(5) << " " << Jx(16) << " " << Jx(24)  << std::endl;
+        //std::cout << "lambda = " << lambda(5) << " " << lambda(16) << " " << lambda(24)  << std::endl;
+
+        output_file << (M * (X_flat - x_hat) ).norm()<< ", " 
+        << dscorr_dx.norm() << ", " 
+        << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << ", "
+        << (B.transpose()* (V_b_inv*H*V_b_inv*(J_curr-Jx))).norm() << ", "
+        << lambda.norm() << ", "
+        << (J_new - J_curr).norm() << ", "
+        << (X_new_flat - X_flat).norm() << std::endl;
         for (int i = 0; i < n; i++) {
             X_curr(i, 0) = X_new_flat(2*i);
             X_curr(i, 1) = X_new_flat(2*i+1);
             J_curr(i) = J_new(i);
         }
+        
     }        
 
     V = (X_curr-X)/dt;
@@ -338,5 +449,7 @@ void animate_implicit<3>(
     const Eigen::Matrix<double, 3, 1> & up_bound,
     const int numofparticles,
     const int iters, 
-    const double dt
+    const double dt,
+    const double kappa,
+    const bool fd_check
     ){}
