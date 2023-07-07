@@ -197,6 +197,7 @@ void animate_implicit<2>(
 
                 // Spring energy derivative
                 dscorr_dx.segment<2>(2*i) += (Wij - W_dq) * Wij_grad;
+                dscorr_dx.segment<2>(2*j) += - (Wij - W_dq) * Wij_grad;
                 //std::cout << "i: " << i << "j: " << j << std::endl;
                 //std::cout << (Wij - W_dq) * Wij_grad << std::endl;
                 // Spring energy second derivative
@@ -204,16 +205,16 @@ void animate_implicit<2>(
                 Matrix2d d2r_dx2 = norm_hessian<2>((xj-xi)/h, r) / h / h;
                 Matrix2d Wij_hess = cubic_bspline_hessian(r, m*fac) * dr_dx * dr_dx.transpose() 
                     + cubic_bspline_derivative(r, m*fac) * d2r_dx2;
-                Matrix2d hess =  (Wij - W_dq) * Wij_hess + Wij_grad * Wij_grad.transpose();
+                Matrix2d hess =  Wij_grad * Wij_grad.transpose(); //(Wij - W_dq) * Wij_hess +
                 //d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
                 //d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
 
                 d2sc_dx2.block<2, 2>(2*i, 2*j) = -hess;     
-                
+                d2sc_dx2.block<2, 2>(2*j, 2*i) = -hess; 
             }
         }
-        dscorr_dx *= k_spring * 2.0; 
-        d2sc_dx2 *= k_spring * 2.0;
+        dscorr_dx *= k_spring; 
+        d2sc_dx2 *= k_spring;
         
 
         if (fd_check) {
