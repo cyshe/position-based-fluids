@@ -170,7 +170,7 @@ void animate_implicit<2>(
         //begin = std::chrono::high_resolution_clock::now();
 
         double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
-        double k_spring = dt_sqr * 100; //500000000;
+        double k_spring = dt_sqr * 10000; //500000000;
         double W_dq = cubic_bspline(dq, fac);
         for (int i = 0; i < n; i++){
             for (int j = 0; j < n; j++){
@@ -209,8 +209,10 @@ void animate_implicit<2>(
                 //d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
                 //d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
 
-                d2sc_dx2.block<2, 2>(2*i, 2*j) = -hess;     
-                d2sc_dx2.block<2, 2>(2*j, 2*i) = -hess; 
+                d2sc_dx2.block<2, 2>(2*i, 2*i) += hess;     
+                d2sc_dx2.block<2, 2>(2*j, 2*j) += hess;     
+                d2sc_dx2.block<2, 2>(2*i, 2*j) += -hess;     
+                d2sc_dx2.block<2, 2>(2*j, 2*i) += -hess; 
             }
         }
         dscorr_dx *= k_spring; 
