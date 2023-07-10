@@ -48,3 +48,8 @@ add_executable(main_2d main_2d.cpp ${CPP_FILES})
 target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)# CompactNSearch)
 target_link_libraries(main_2d PUBLIC finitediff::finitediff)
 target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)
+
+add_executable(smoke_sim smoke_sim.cpp ${CPP_FILES})
+target_link_libraries(smoke_sim PUBLIC polyscope Eigen3::Eigen)# CompactNSearch)
+target_link_libraries(smoke_sim PUBLIC finitediff::finitediff)
+target_link_libraries(smoke_sim PUBLIC polyscope Eigen3::Eigen)
