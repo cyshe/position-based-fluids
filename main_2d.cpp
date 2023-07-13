@@ -70,7 +70,7 @@ void callback() {
     ++frame;
     // std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
-    //polyscope::screenshot();
+    polyscope::screenshot();
   }
 
   // Resets the simulation
@@ -177,7 +177,7 @@ int main(int argc, char *argv[]){
 
 
   // Take a screenshot
-  //polyscope::screenshot();
+  polyscope::screenshot();
 
   // Show the gui
   polyscope::show();

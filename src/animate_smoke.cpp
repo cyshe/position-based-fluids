@@ -102,20 +102,29 @@ void animate_smoke<2>(
                 std::cout << "dr_dx:" << dr_dx << std::endl;
                 std::cout << " Wij" << Wij << std::endl;
                 // Wij is non zero 
-                //dr_dx is zero but why?
                 // Spring energy second derivative
-                // Computing dWij/(dxi dxj) 
+                // Computing dWij/(dxi dxj)
                 Matrix2d d2r_dx2 = norm_hessian<2>((xj-xi)/h, r) / h / h;
                 Matrix2d Wij_hess = cubic_bspline_hessian(r, m*fac) * dr_dx * -dr_dx.transpose() 
                     + cubic_bspline_derivative(r, m*fac) * d2r_dx2;
-                Matrix2d hess =  Wij_grad * Wij_grad.transpose()+ (Wij - W_dq) * Wij_hess;
+                Matrix2d hess_ij =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
+                Matrix2d hess_ji =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
                 //d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
                 //d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
 
-                d2sc_dx2.block<2, 2>(2*i, 2*j) += -hess;     
-                d2sc_dx2.block<2, 2>(2*j, 2*i) += -hess;
-                d2sc_dx2.block<2, 2>(2*i, 2*i) += hess;     
-                d2sc_dx2.block<2, 2>(2*j, 2*j) += hess;
+                Wij_hess = cubic_bspline_hessian(0, m*fac) * dr_dx * dr_dx.transpose() 
+                    + cubic_bspline_derivative(0, m*fac) * norm_hessian<2>((xi-xi)/h, 0) / h / h;
+                Matrix2d hess_ii =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
+
+
+                Wij_hess = cubic_bspline_hessian(0, m*fac) * dr_dx * dr_dx.transpose() 
+                    + cubic_bspline_derivative(0, m*fac) * norm_hessian<2>((xj-xj)/h, 0) / h / h;
+                Matrix2d hess_jj =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
+
+                d2sc_dx2.block<2, 2>(2*i, 2*i) += hess_ii;     
+                d2sc_dx2.block<2, 2>(2*j, 2*j) += hess_jj;
+                d2sc_dx2.block<2, 2>(2*i, 2*j) += -hess_ij;     
+                d2sc_dx2.block<2, 2>(2*j, 2*i) += -hess_ji;
             }
         }
         dscorr_dx *= k_spring;
