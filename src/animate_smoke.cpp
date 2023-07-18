@@ -80,57 +80,50 @@ void animate_smoke<2>(
                 double Wij = cubic_bspline(r, m*fac);
                 //if (Wij < eps) continue;
 
-                if (i == 0) {
-                //    std::cout << "j = " << j << " r = " << r << " W(r) = " << cubic_bspline(r, fac) 
-                //        << " W_dq " << W_dq << std::endl;
-                }
-                // Changing the tensile instability to a simpler spring energy
+                // Tensile instability energy:
                 // E(x) = 0.5 * k_spring * \sum_i \sum_j (W_ij - W_dq)^2
-                // This will give pretty much the same result as the PBF one, but the derivatives
-                // were easier to work through
-
+                
                 // Kernel derivative w.r.t to xi
-                Vector2d dr_dx = -norm_derivative<2>((xj-xi)/h, r) / h;
-                Vector2d Wij_grad = cubic_bspline_derivative(r, m*fac) * dr_dx; 
+                Vector2d dr_dxi = -norm_derivative<2>((xj-xi)/h, r) / h;
+                double dphi_dr = cubic_bspline_derivative(r, m*fac);
+                Vector2d dW_dxi = dphi_dr * dr_dxi; 
 
                 // Spring energy derivative
-                dscorr_dx.segment<2>(2*j) += -(Wij - W_dq) * Wij_grad;
-                dscorr_dx.segment<2>(2*i) += (Wij - W_dq) * Wij_grad;
-                std::cout << "i: " << i << "j: " << j << std::endl;
-                std::cout << "xi:" << xi << std::endl;
-                std::cout << "xj:" << xj << std::endl;
-                std::cout << "dr_dx:" << dr_dx << std::endl;
-                std::cout << " Wij" << Wij << std::endl;
-                // Wij is non zero 
-                // Spring energy second derivative
-                // Computing dWij/(dxi dxj)
-                Matrix2d d2r_dx2 = norm_hessian<2>((xj-xi)/h, r) / h / h;
-                Matrix2d Wij_hess = cubic_bspline_hessian(r, m*fac) * dr_dx * -dr_dx.transpose() 
-                    + cubic_bspline_derivative(r, m*fac) * d2r_dx2;
-                Matrix2d hess_ij =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
-                Matrix2d hess_ji =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
-                //d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
-                //d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
+                dscorr_dx.segment<2>(2*i) += (Wij - W_dq) * dW_dxi;
+                dscorr_dx.segment<2>(2*j) += -(Wij - W_dq) * dW_dxi;
 
-                Wij_hess = cubic_bspline_hessian(0, m*fac) * dr_dx * dr_dx.transpose() 
-                    + cubic_bspline_derivative(0, m*fac) * norm_hessian<2>((xi-xi)/h, 0) / h / h;
-                Matrix2d hess_ii =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
+                // Hessian components for spring energy
+                
+                // Distance hessian w.r.t to xi
+                // off-diagonal blocks are negative of this
+                Matrix2d d2r_dxi2 = norm_hessian<2>((xj-xi)/h, r) / h / h;
+                double d2phi_dr2 = cubic_bspline_hessian(r, m*fac);
 
+                // weight, wij, hessian
+                Matrix2d d2w_dxi2 = 
+                    dphi_dr * d2r_dxi2 + 
+                    dr_dxi * dr_dxi.transpose() * d2phi_dr2;
 
-                Wij_hess = cubic_bspline_hessian(0, m*fac) * dr_dx * dr_dx.transpose() 
-                    + cubic_bspline_derivative(0, m*fac) * norm_hessian<2>((xj-xj)/h, 0) / h / h;
-                Matrix2d hess_jj =  Wij_grad * Wij_grad.transpose() + (Wij - W_dq) * Wij_hess;
+                // energy (wij - w_dq)^2 hessian
+                Matrix2d hess_ii = (Wij - W_dq) * d2w_dxi2 +
+                    dW_dxi * dW_dxi.transpose();
 
+                // Diagonal blocks
                 d2sc_dx2.block<2, 2>(2*i, 2*i) += hess_ii;     
-                d2sc_dx2.block<2, 2>(2*j, 2*j) += hess_jj;
-                d2sc_dx2.block<2, 2>(2*i, 2*j) += -hess_ij;     
-                d2sc_dx2.block<2, 2>(2*j, 2*i) += -hess_ji;
+                d2sc_dx2.block<2, 2>(2*j, 2*j) += hess_ii;     
+
+                // Off-diagonals
+                d2sc_dx2.block<2, 2>(2*i, 2*j) += -hess_ii;     
+                d2sc_dx2.block<2, 2>(2*j, 2*i) += -hess_ii;
+
+                ////d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
+                ////d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
             }
         }
         dscorr_dx *= k_spring;
         d2sc_dx2 *= k_spring;
-        std::cout << "dscorr_dx: " << dscorr_dx << std::endl;
-        std::cout << "d2sc_dx2: " << d2sc_dx2 << std::endl;
+        //std::cout << "dscorr_dx: " << dscorr_dx << std::endl;
+        //std::cout << "d2sc_dx2: " << d2sc_dx2 << std::endl;
 
         //Finite difference check
         fd::AccuracyOrder accuracy = fd::SECOND;
@@ -156,14 +149,15 @@ void animate_smoke<2>(
 
         Eigen::VectorXd fdscorr_dx;
         fd::finite_gradient(X_flat, scorr, fdscorr_dx, accuracy, 1.0e-7);
-        std::cout << "Gradient Norm: " << (fdscorr_dx).norm() << std::endl;
+        //std::cout << "Gradient Norm: " << (fdscorr_dx).norm() << std::endl;
         std::cout << X_flat << std::endl;
-        std::cout << "dscorr:" << dscorr_dx << std::endl;
-        std::cout << "fdscorr:" << fdscorr_dx << std::endl;
+        //std::cout << "dscorr:" << dscorr_dx << std::endl;
+        //std::cout << "fdscorr:" << fdscorr_dx << std::endl;
+        std::cout << "Gradient Error: " << (dscorr_dx - fdscorr_dx).norm() << std::endl;
 
         Eigen::MatrixXd fd2sc_dx2;
         fd::finite_hessian(X_flat, scorr, fd2sc_dx2, accuracy, 1.0e-7);
-        std::cout << "Hessian Norm: " << (fd2sc_dx2 - d2sc_dx2).norm() << std::endl;
+        std::cout << "Hessian Error: " << (fd2sc_dx2 - d2sc_dx2).norm() << std::endl;
         std::cout << "fd" << std::endl;
         std::cout << fd2sc_dx2 << std::endl;
         std::cout << "d2sc_dx2" << std::endl;

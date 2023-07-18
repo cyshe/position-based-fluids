@@ -21,7 +21,7 @@ void animate_smoke(
 template <int DIM>
 Eigen::Matrix<double,DIM,1> norm_derivative(
     const Eigen::Matrix<double,DIM,1>& x, double r,
-    double eps = 0.01) {
+    double eps = 1e-6) {
   return x / (r+eps);
 }
 
@@ -30,7 +30,7 @@ Eigen::Matrix<double,DIM,1> norm_derivative(
 //  where r = ||x||
 template <int DIM>
 Eigen::Matrix<double,DIM,DIM> norm_hessian(
-    const Eigen::Matrix<double,DIM,1>& x, double r, double eps=0.01) {
+    const Eigen::Matrix<double,DIM,1>& x, double r, double eps=1e-6) {
   Eigen::Matrix<double,DIM,DIM> I = Eigen::Matrix<double,DIM,DIM>::Identity();
   r = r + eps;
   return I / r - x * x.transpose() / (r * r * r);
