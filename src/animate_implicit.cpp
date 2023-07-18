@@ -8,6 +8,9 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include "TinyAD/Scalar.hh"
+#include "TinyAD/ScalarFunction.hh"
+#include "TinyAD/VectorFunction.hh"
 
 //#include "CompactNSearch"
 
@@ -168,10 +171,40 @@ void animate_implicit<2>(
         //printf("Time measured 1: %.3f seconds.\n", elapsed.count() * 1e-9);
 
         //begin = std::chrono::high_resolution_clock::now();
+        std::vector<Eigen::Vector2i> elements;
+
+        
+
+        for (int i = 0; i < n; i++){
+            for (int j = 0; j < n; j++){
+                const auto& xi = X_flat.segment<2>(2 * i);
+                const auto& xj = X_flat.segment<2>(2 * j);
+                if ((xj - xi).norm() < h){
+                    elements.push_back(Eigen::Vector2i(i,j));
+                }
+            }
+        }
 
         double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
-        double k_spring = dt_sqr * 10000; //500000000;
+        double k_spring = dt_sqr * 100; //500000000;
         double W_dq = cubic_bspline(dq, fac);
+
+        auto func = TinyAD::scalar_function<2>(TinyAD::range(n));
+
+        func.add_elements<2>(TinyAD::range(elements.size()), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element){
+            using T = TINYAD_SCALAR_TYPE(element);
+            int idx = element.handle;
+            Eigen::Vector2<T> xi = X_flat.segment<2>(2 * elements[idx](0));
+            Eigen::Vector2<T> xj = X_flat.segment<2>(2 * elements[idx](1));
+            T r = (xj - xi).norm()/h;
+            T eps = 1e-6;
+            T Wij = cubic_bspline(r, T(m*fac));
+            return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
+        });
+
+
+
+
         for (int i = 0; i < n; i++){
             for (int j = 0; j < n; j++){
                 if (i == j) continue;
@@ -180,39 +213,46 @@ void animate_implicit<2>(
                 double r = (xj - xi).norm()/h;
                 double eps = 1e-6;
                 double Wij = cubic_bspline(r, m*fac);
-                if (Wij < eps) continue;
+                //if (Wij < eps) continue;
 
-                if (i == 0) {
-                //    std::cout << "j = " << j << " r = " << r << " W(r) = " << cubic_bspline(r, fac) 
-                //        << " W_dq " << W_dq << std::endl;
-                }
-                // Changing the tensile instability to a simpler spring energy
+                // Tensile instability energy:
                 // E(x) = 0.5 * k_spring * \sum_i \sum_j (W_ij - W_dq)^2
-                // This will give pretty much the same result as the PBF one, but the derivatives
-                // were easier to work through
-
+                
                 // Kernel derivative w.r.t to xi
-                Vector2d dr_dx = -norm_derivative<2>((xj-xi)/h, r) / h;
-                Vector2d Wij_grad = cubic_bspline_derivative(r, m*fac) * dr_dx; 
+                Vector2d dr_dxi = -norm_derivative<2>((xj-xi)/h, r) / h;
+                double dphi_dr = cubic_bspline_derivative(r, m*fac);
+                Vector2d dW_dxi = dphi_dr * dr_dxi; 
 
                 // Spring energy derivative
-                dscorr_dx.segment<2>(2*i) += (Wij - W_dq) * Wij_grad;
-                dscorr_dx.segment<2>(2*j) += - (Wij - W_dq) * Wij_grad;
-                //std::cout << "i: " << i << "j: " << j << std::endl;
-                //std::cout << (Wij - W_dq) * Wij_grad << std::endl;
-                // Spring energy second derivative
-                // Computing dWij/(dxi dxj) 
-                Matrix2d d2r_dx2 = norm_hessian<2>((xj-xi)/h, r) / h / h;
-                Matrix2d Wij_hess = cubic_bspline_hessian(r, m*fac) * dr_dx * dr_dx.transpose() 
-                    + cubic_bspline_derivative(r, m*fac) * d2r_dx2;
-                Matrix2d hess =  Wij_grad * Wij_grad.transpose(); //(Wij - W_dq) * Wij_hess +
-                //d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
-                //d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
+                dscorr_dx.segment<2>(2*i) += (Wij - W_dq) * dW_dxi;
+                dscorr_dx.segment<2>(2*j) += -(Wij - W_dq) * dW_dxi;
 
-                d2sc_dx2.block<2, 2>(2*i, 2*i) += hess;     
-                d2sc_dx2.block<2, 2>(2*j, 2*j) += hess;     
-                d2sc_dx2.block<2, 2>(2*i, 2*j) += -hess;     
-                d2sc_dx2.block<2, 2>(2*j, 2*i) += -hess; 
+                // Hessian components for spring energy
+                
+                // Distance hessian w.r.t to xi
+                // off-diagonal blocks are negative of this
+                Matrix2d d2r_dxi2 = norm_hessian<2>((xj-xi)/h, r) / h / h;
+                double d2phi_dr2 = cubic_bspline_hessian(r, m*fac);
+
+                // weight, wij, hessian
+                Matrix2d d2w_dxi2 = 
+                    dphi_dr * d2r_dxi2 + 
+                    dr_dxi * dr_dxi.transpose() * d2phi_dr2;
+
+                // energy (wij - w_dq)^2 hessian
+                Matrix2d hess_ii = (Wij - W_dq) * d2w_dxi2 +
+                    dW_dxi * dW_dxi.transpose();
+
+                // Diagonal blocks
+                d2sc_dx2.block<2, 2>(2*i, 2*i) += hess_ii;     
+                d2sc_dx2.block<2, 2>(2*j, 2*j) += hess_ii;     
+
+                // Off-diagonals
+                d2sc_dx2.block<2, 2>(2*i, 2*j) += -hess_ii;     
+                d2sc_dx2.block<2, 2>(2*j, 2*i) += -hess_ii;
+
+                ////d2c_dx2.block<2, 2>(2*i, 2*j) =  -Wij_hess * lambda(i)/rho_0;
+                ////d2c_dx2.block<2, 2>(2*j, 2*i) =  -Wij_hess * lambda(i)/rho_0;
             }
         }
         dscorr_dx *= k_spring; 
@@ -234,21 +274,24 @@ void animate_implicit<2>(
                         double Wij = cubic_bspline(r, m*fac);
                         //if (Wij < eps) continue;
                         sc += 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
-                        std::cout<< "sc" << sc << std::endl;
+                        //std::cout<< "sc" << sc << std::endl;
                     }
                 }
                 return sc;
             };
 
             Eigen::VectorXd fdscorr_dx;
-            fd::finite_gradient(X_flat, scorr, fdscorr_dx, accuracy, 1.0e-5);
-            std::cout << "Gradient Norm: " << (fdscorr_dx).norm() << std::endl;
-            std::cout << fdscorr_dx.head(10) << std::endl;
-            std::cout << dscorr_dx.head(10) << std::endl;
+            fd::finite_gradient(X_flat, scorr, fdscorr_dx, accuracy, 1.0e-7);
+        //std::cout << "Gradient Norm: " << (fdscorr_dx).norm() << std::endl;
+            //std::cout << X_flat << std::endl;
+        //std::cout << "dscorr:" << dscorr_dx << std::endl;
+        //std::cout << "fdscorr:" << fdscorr_dx << std::endl;
+            std::cout << "Gradient Error: " << (dscorr_dx - fdscorr_dx).array().abs().maxCoeff() << std::endl;
 
             Eigen::MatrixXd fd2sc_dx2;
             fd::finite_hessian(X_flat, scorr, fd2sc_dx2, accuracy, 1.0e-5);
-            std::cout << "Hessian Norm: " << (fd2sc_dx2 - d2sc_dx2).norm() << std::endl;
+            std::cout << "Hessian error: " << (fd2sc_dx2 - d2sc_dx2).norm() << std::endl;
+            std::cout << "------------------" <<std::endl;
             std::cout << fd2sc_dx2(10,5) << " " << d2sc_dx2(10,5) << std::endl;
             std::cout << fd2sc_dx2.row(0) << std::endl; 
             std::cout << d2sc_dx2.row(0) << std::endl;

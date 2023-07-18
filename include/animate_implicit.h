@@ -38,9 +38,10 @@ Eigen::Matrix<double,DIM,DIM> norm_hessian(
   return I / r - x * x.transpose() / (r * r * r);
 }
 
-inline double cubic_bspline(double r, double fac)
+template <typename T>
+inline T cubic_bspline(T r, T fac)
 {
-    double ret = 0.0;
+    T ret = 0.0;
     if (r <= 1 && r >= 0){
         ret = (1 - 1.5 * r * r *(1 - 0.5 *r)) * fac;
     }
