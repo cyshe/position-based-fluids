@@ -15,7 +15,8 @@ void animate_implicit(
     const int iters, 
     const double dt,
     const double kappa,
-    const bool fd_check = false
+    const bool fd_check = false,
+    const bool converge_check = false
 );
 
 // Computes derivative of norm of a vector

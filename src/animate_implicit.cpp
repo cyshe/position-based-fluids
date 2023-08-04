@@ -18,6 +18,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+
 using namespace Eigen;
 
 namespace {
@@ -35,7 +36,8 @@ void animate_implicit<2>(
     const int iters, 
     const double dt,
     const double kappa,
-    const bool fd_check
+    const bool fd_check,
+    const bool converge_check
     ){
 
     int n = numofparticles;
@@ -44,6 +46,7 @@ void animate_implicit<2>(
     double h = 0.1; // h for particle distance
     double vol = 1;//m/rho_0;
     double n_corr = 4; //n for s_corr in tensile instability term
+    int it = 0; //iteration number
 
     std::ofstream output_file("output.txt", std::ios::app);
 
@@ -117,7 +120,7 @@ void animate_implicit<2>(
     SimplicialLDLT<SparseMatrix<double>> solver;
 
     // Newton solver
-    for (int it = 0; it < iters; it++) {
+    while (converge_check || it < iters) {
         // Flatten current position matrix
         //auto begin = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < n; i++) {
@@ -173,7 +176,7 @@ void animate_implicit<2>(
         //begin = std::chrono::high_resolution_clock::now();
         std::vector<Eigen::Vector2i> elements;
 
-        
+
 
         for (int i = 0; i < n; i++){
             for (int j = 0; j < n; j++){
@@ -194,17 +197,20 @@ void animate_implicit<2>(
         func.add_elements<2>(TinyAD::range(elements.size()), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element){
             using T = TINYAD_SCALAR_TYPE(element);
             int idx = element.handle;
-            Eigen::Vector2<T> xi = X_flat.segment<2>(2 * elements[idx](0));
-            Eigen::Vector2<T> xj = X_flat.segment<2>(2 * elements[idx](1));
-            T r = (xj - xi).norm()/h;
-            T eps = 1e-6;
+            Eigen::Vector2<T> xi = element.variables(elements[idx](0));
+            Eigen::Vector2<T> xj = element.variables(elements[idx](1));
+            T r = (xj - xi).norm(); //squaredNorm()/h;
             T Wij = cubic_bspline(r, T(m*fac));
-            return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
+            return r;
+            //0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
         });
 
+        std::cout << "Evaluate gradient and hessian" << std::endl;
+        auto [f, g, H_proj] = func.eval_with_hessian_proj(X_flat);
+        dscorr_dx = g;
+        d2sc_dx2 = H_proj;
 
-
-
+/*
         for (int i = 0; i < n; i++){
             for (int j = 0; j < n; j++){
                 if (i == j) continue;
@@ -256,8 +262,8 @@ void animate_implicit<2>(
             }
         }
         dscorr_dx *= k_spring; 
-        d2sc_dx2 *= k_spring;
-        
+        d2sc_dx2 *= k_spring;*/
+
 
         if (fd_check) {
             fd::AccuracyOrder accuracy = fd::SECOND;
@@ -315,13 +321,13 @@ void animate_implicit<2>(
         //std::cout << "dscorr_dx size" << dscorr_dx.size() << std::endl;
         //std::cout << "A size" << A.size() << std::endl;
         //std::cout << "b size" << b.size() << std::endl;
-        std::cout << "b - inertial: " << (M * (X_flat - x_hat) ).norm() << std::endl;
-        std::cout << "b - tensile instability: " << dscorr_dx.norm() << std::endl;
-        std::cout << "b - elastic: " << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << std::endl;
-        std::cout << "b - constraint: " << (B.transpose()* (V_b_inv*H*V_b_inv*(J_curr-Jx))).norm() << std::endl;
+        //std::cout << "b - inertial: " << (M * (X_flat - x_hat) ).norm() << std::endl;
+        //std::cout << "b - tensile instability: " << dscorr_dx.norm() << std::endl;
+        //std::cout << "b - elastic: " << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << std::endl;
+        //std::cout << "b - constraint: " << (B.transpose()* (V_b_inv*H*V_b_inv*(J_curr-Jx))).norm() << std::endl;
 
 
-        std::cout << "start solve" << std::endl;
+        //std::cout << "start solve" << std::endl;
         solver.compute(A);
         if (solver.info() != Success) {
             std::cout << "decomposition failed" << std::endl;
@@ -353,7 +359,7 @@ void animate_implicit<2>(
 
         delta_X = solver.solve(b);
 
-        std::cout << "solved" << std::endl;
+        //std::cout << "solved" << std::endl;
         lambda_1 = -V_b_inv * kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
         lambda_2 = V_b_inv * H * V_b_inv * (J_curr - Jx);
         lambda_3 = V_b_inv * H * V_b_inv * B * delta_X;
@@ -454,12 +460,18 @@ void animate_implicit<2>(
         << lambda.norm() << ", "
         << (J_new - J_curr).norm() << ", "
         << (X_new_flat - X_flat).norm() << std::endl;
+
         for (int i = 0; i < n; i++) {
             X_curr(i, 0) = X_new_flat(2*i);
             X_curr(i, 1) = X_new_flat(2*i+1);
             J_curr(i) = J_new(i);
         }
-        
+        std::cout << "iteration: " << it << "," << delta_X.norm() << std::endl;
+        it += 1;
+        if (delta_X.norm()/n < 2e-3) {
+            std::cout << "converged" << std::endl;
+            break;
+        }
     }        
 
     V = (X_curr-X)/dt;
@@ -469,7 +481,7 @@ void animate_implicit<2>(
     //std::cout << X << std::endl;
     // boundary detection
     
-    for (int i = 0; i < numofparticles; i++){
+    for (int i = 0; i < n; i++){
         for (int j = 0; j < 2; ++j) {
             if (X(i,j) < low_bound(j)) {
                 V(i, j) = 0; //abs(V(i, j));
@@ -497,5 +509,6 @@ void animate_implicit<3>(
     const int iters, 
     const double dt,
     const double kappa,
-    const bool fd_check
+    const bool fd_check,
+    const bool converge_check
     ){}
