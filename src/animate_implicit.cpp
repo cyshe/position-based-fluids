@@ -182,7 +182,7 @@ void animate_implicit<2>(
             for (int j = 0; j < n; j++){
                 const auto& xi = X_flat.segment<2>(2 * i);
                 const auto& xj = X_flat.segment<2>(2 * j);
-                if ((xj - xi).norm() < h){
+                if ((xj - xi).norm() < h && (xj - xi).norm() > 0){
                     elements.push_back(Eigen::Vector2i(i,j));
                 }
             }
@@ -199,10 +199,9 @@ void animate_implicit<2>(
             int idx = element.handle;
             Eigen::Vector2<T> xi = element.variables(elements[idx](0));
             Eigen::Vector2<T> xj = element.variables(elements[idx](1));
-            T r = (xj - xi).norm(); //squaredNorm()/h;
+            T r = (xj - xi).norm()/h; //squaredNorm()/h;
             T Wij = cubic_bspline(r, T(m*fac));
-            return r;
-            //0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
+            return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
         });
 
         std::cout << "Evaluate gradient and hessian" << std::endl;
