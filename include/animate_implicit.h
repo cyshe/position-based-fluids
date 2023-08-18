@@ -16,6 +16,7 @@ void animate_implicit(
     const double dt,
     const double kappa,
     const bool fd_check = false,
+    const bool bounds = true,
     const bool converge_check = false
 );
 

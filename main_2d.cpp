@@ -38,6 +38,7 @@ void callback() {
   static bool is_simulating = false; static bool write_sequence = false;
   static bool fd_check = false;
   static bool converge_check = false;
+  static bool bounds = true;
   static int frame = 0;
 
   ImGui::PushItemWidth(100);
@@ -57,6 +58,7 @@ void callback() {
   }
 
   ImGui::Checkbox("Iterate until Convergence", &converge_check);
+  ImGui::Checkbox("Boundaries", &bounds);
 
   ImGui::InputInt("Solver Iterations", &iters);
   ImGui::InputDouble("Kappa", &kappa);
@@ -67,7 +69,7 @@ void callback() {
   if (ImGui::Button("One Step") || is_simulating) {
     //animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     //animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    animate_implicit<2>(q, q_dot, J, N, lower_bound, upper_bound, numofparticles, iters, dt, kappa, fd_check, converge_check);
+    animate_implicit<2>(q, q_dot, J, N, lower_bound, upper_bound, numofparticles, iters, dt, kappa, fd_check, bounds, converge_check);
     psCloud->updatePointPositions2D(q);
     psCloud->addVectorQuantity("velocity", q_dot, polyscope::VectorType::STANDARD)->setEnabled(true);
     ++frame;

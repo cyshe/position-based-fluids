@@ -37,6 +37,7 @@ void animate_implicit<2>(
     const double dt,
     const double kappa,
     const bool fd_check,
+    const bool bounds,
     const bool converge_check
     ){
 
@@ -54,7 +55,7 @@ void animate_implicit<2>(
     const double dt_sqr = dt * dt;
     MatrixXd f_ext(n, 2);
     f_ext.setZero();
-    f_ext.col(1).setConstant(-9.8);
+    //f_ext.col(1).setConstant(-9.8);
     
     VectorXd x_hat = VectorXd::Zero(2 * n);
     
@@ -189,11 +190,13 @@ void animate_implicit<2>(
         }
 
         double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
-        double k_spring = dt_sqr * 100; //500000000;
+        double k_spring = dt_sqr * 1000; //500000000;
         double W_dq = cubic_bspline(dq, fac);
 
         auto func = TinyAD::scalar_function<2>(TinyAD::range(n));
+        
 
+        
         func.add_elements<2>(TinyAD::range(elements.size()), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element){
             using T = TINYAD_SCALAR_TYPE(element);
             int idx = element.handle;
@@ -201,8 +204,16 @@ void animate_implicit<2>(
             Eigen::Vector2<T> xj = element.variables(elements[idx](1));
             T r = (xj - xi).norm()/h; //squaredNorm()/h;
             T Wij = cubic_bspline(r, T(m*fac));
+            //(rho(i) - rho(j)) ^2
+            for (int k = 0; k < n; k++){
+            Eigen::Vector2<T> xk = element[]; 
+            if ()
+        }
+        
+
             return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
         });
+
 
         std::cout << "Evaluate gradient and hessian" << std::endl;
         auto [f, g, H_proj] = func.eval_with_hessian_proj(X_flat);
@@ -427,7 +438,7 @@ void animate_implicit<2>(
             es.compute(MatrixXd(A));
             std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
             //std::cout << delta_X << std::endl;
-            exit(1);
+            //exit(1);
         }
 
 //        SelfAdjointEigenSolver<MatrixXd> es;
@@ -467,7 +478,7 @@ void animate_implicit<2>(
         }
         std::cout << "iteration: " << it << "," << delta_X.norm() << std::endl;
         it += 1;
-        if (delta_X.norm()/n < 2e-3) {
+        if (delta_X.norm()/n < 2e-3 && converge_check) {
             std::cout << "converged" << std::endl;
             break;
         }
@@ -479,16 +490,17 @@ void animate_implicit<2>(
         
     //std::cout << X << std::endl;
     // boundary detection
-    
-    for (int i = 0; i < n; i++){
-        for (int j = 0; j < 2; ++j) {
-            if (X(i,j) < low_bound(j)) {
-                V(i, j) = 0; //abs(V(i, j));
-                X(i,j) = low_bound(j);
-            }
-            if (X(i,j) > up_bound(j)) {
-                V(i, j) = 0;// -1* abs(V(i, j));
-                X(i,j) = up_bound(j);
+    if (bounds) {
+        for (int i = 0; i < n; i++){
+            for (int j = 0; j < 2; ++j) {
+                if (X(i,j) < low_bound(j)) {
+                    V(i, j) = 0; //abs(V(i, j));
+                    X(i,j) = low_bound(j);
+                }
+                if (X(i,j) > up_bound(j)) {
+                    V(i, j) = 0;// -1* abs(V(i, j));
+                    X(i,j) = up_bound(j);
+                }
             }
         }
     }
@@ -509,5 +521,6 @@ void animate_implicit<3>(
     const double dt,
     const double kappa,
     const bool fd_check,
+    const bool bounds,
     const bool converge_check
     ){}
