@@ -177,8 +177,6 @@ void animate_implicit<2>(
         //begin = std::chrono::high_resolution_clock::now();
         std::vector<Eigen::Vector2i> elements;
 
-
-
         for (int i = 0; i < n; i++){
             for (int j = 0; j < n; j++){
                 const auto& xi = X_flat.segment<2>(2 * i);
@@ -204,15 +202,38 @@ void animate_implicit<2>(
             Eigen::Vector2<T> xj = element.variables(elements[idx](1));
             T r = (xj - xi).norm()/h; //squaredNorm()/h;
             T Wij = cubic_bspline(r, T(m*fac));
-            //(rho(i) - rho(j)) ^2
-            for (int k = 0; k < n; k++){
-            Eigen::Vector2<T> xk = element[]; 
-            if ()
-        }
-        
+            
 
-            return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
+            return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq) +(rhoi - rhoj) * (rhoi - rhoj);
         });
+
+
+        std::vector<std::vector> neighbors(n);
+
+        for (int i = 0; i < n; i++){
+            for (int j = 0; j < n; j++){
+                const auto& xi = X_flat.segment<2>(2 * i);
+                const auto& xj = X_flat.segment<2>(2 * j);
+                if ((xj - xi).norm() < h && (xj - xi).norm() > 0){
+                    neighbors[i].push_back(j);
+                }
+            }
+        }
+
+        func.add_elements<16> (TinyAD::range(n), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element){
+            using T = TINYAD_SCALAR_TYPE(element);
+            int idx = element.handle;
+            Eigen::Vector2<T> xi = element.variables(idx);
+            for (int j = 0; j < neighbors[idx].size(); j++){
+                Eigen::Vector2<T> xj = element.variables(neighbors[idx][j]);
+                T r = (xj - xi).norm()/h; //squaredNorm()/h;
+                T Wij = cubic_bspline(r, T(m*fac));
+               
+            }
+            return 
+        });
+
+
 
 
         std::cout << "Evaluate gradient and hessian" << std::endl;
