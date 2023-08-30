@@ -1,5 +1,6 @@
 #include "animate_implicit.h"
 #include "calculate_lambda.h"
+#include "surface_tension.h"
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -204,11 +205,11 @@ void animate_implicit<2>(
             T Wij = cubic_bspline(r, T(m*fac));
             
 
-            return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq) +(rhoi - rhoj) * (rhoi - rhoj);
+            return 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
         });
 
 
-        std::vector<std::vector> neighbors(n);
+        std::vector<std::vector<int>> neighbors(n);
 
         for (int i = 0; i < n; i++){
             for (int j = 0; j < n; j++){
@@ -220,18 +221,6 @@ void animate_implicit<2>(
             }
         }
 
-        func.add_elements<16> (TinyAD::range(n), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element){
-            using T = TINYAD_SCALAR_TYPE(element);
-            int idx = element.handle;
-            Eigen::Vector2<T> xi = element.variables(idx);
-            for (int j = 0; j < neighbors[idx].size(); j++){
-                Eigen::Vector2<T> xj = element.variables(neighbors[idx][j]);
-                T r = (xj - xi).norm()/h; //squaredNorm()/h;
-                T Wij = cubic_bspline(r, T(m*fac));
-               
-            }
-            return 
-        });
 
 
 
@@ -343,10 +332,10 @@ void animate_implicit<2>(
         //std::cout << "symmetry" << (d2c_dx2 - d2c_dx2.transpose()).norm() << std::endl;
 
         VectorXd dpsi_dJ = kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
-        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + d2sc_dx2.sparseView();// + d2c_dx2.sparseView(); 
+        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + d2sc_dx2.sparseView()+surface_tension_hessian<2>(X_flat, neighbors, h, m, fac, kappa).sparseView();// + d2c_dx2.sparseView(); 
         b = -(M) * (X_flat - x_hat) - dscorr_dx
           + B.transpose() * (V_b_inv * dpsi_dJ
-          + V_b_inv*H*V_b_inv*(Jx - J_curr));
+          + V_b_inv*H*V_b_inv*(Jx - J_curr)) - surface_tension_gradient<2>(X_flat, neighbors, h, m, fac, kappa);
 
         //std::cout << "d2sc_dx2 size" << d2sc_dx2.size() << std::endl;
         //std::cout << "dscorr_dx size" << dscorr_dx.size() << std::endl;
@@ -440,7 +429,8 @@ void animate_implicit<2>(
             //std::cout << "e_psi: " << e_psi << std::endl;
             //std::cout << "e_c: " << e_c << std::endl;
             //std::cout << "e_s: " << e_s << std::endl;
-            return e_i + e_psi + e_c + e_s;
+            
+            return e_i + e_psi + e_c + e_s+surface_tension_energy<2>(X_new_flat, neighbors, h, m, fac, kappa);
         };
         
         e0 = energy_func(0);
