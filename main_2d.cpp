@@ -22,6 +22,7 @@ polyscope::PointCloud* psCloud;
 MatrixXd q0, q, q_dot;  // particle positions, velocities
 MatrixXi N;             // Per-particle neighbors
 VectorXd J;
+MatrixXd grad_i, grad_psi, grad_c, grad_s, grad_st;
 
 int numofparticles; //number of particles
 
@@ -29,9 +30,11 @@ int numofparticles; //number of particles
 Vector2d lower_bound;
 Vector2d upper_bound;
 
-int iters = 5;
+int iters = 10;
 double dt = 0.03;
-double kappa = 10;
+double kappa = 100;
+double k_st = 0.1;
+double k_s = 1000;
 
 void callback() {
 
@@ -62,6 +65,8 @@ void callback() {
 
   ImGui::InputInt("Solver Iterations", &iters);
   ImGui::InputDouble("Kappa", &kappa);
+  ImGui::InputDouble("k_st", &k_st);
+  ImGui::InputDouble("k_spring", &k_s);
 
   // Perform simulation step
   ImGui::Checkbox("Simulate", &is_simulating);
@@ -69,9 +74,20 @@ void callback() {
   if (ImGui::Button("One Step") || is_simulating) {
     //animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     //animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
-    animate_implicit<2>(q, q_dot, J, N, lower_bound, upper_bound, numofparticles, iters, dt, kappa, fd_check, bounds, converge_check);
+    grad_i.setZero(); grad_psi.setZero();
+    grad_c.setZero(); grad_s.setZero();
+    grad_st.setZero();
+
+    animate_implicit<2>(q, q_dot, J, N, 
+      grad_i, grad_psi, grad_c, grad_s, grad_st,
+      lower_bound, upper_bound, numofparticles, iters, dt, 
+      kappa, k_st, k_s, fd_check, bounds, converge_check);
+
     psCloud->updatePointPositions2D(q);
-    psCloud->addVectorQuantity("velocity", q_dot, polyscope::VectorType::STANDARD)->setEnabled(true);
+    psCloud->addVectorQuantity("velocity", grad_i + grad_psi + grad_c + grad_s + grad_st, polyscope::VectorType::STANDARD)->setEnabled(true);
+    psCloud->addVectorQuantity("kappa", grad_i + grad_psi + grad_c, polyscope::VectorType::STANDARD)->setEnabled(true);
+    psCloud->addVectorQuantity("Spring grad", grad_s, polyscope::VectorType::STANDARD)->setEnabled(true);
+    psCloud->addVectorQuantity("Surface Tension grad", grad_st, polyscope::VectorType::STANDARD)->setEnabled(true);
     ++frame;
     // std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
@@ -107,7 +123,10 @@ int main(int argc, char *argv[]){
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions
+
   double l = 15;
+/*
+  //rectangle
   numofparticles = l* 2 *l;
 
   // (-1, -1), (1.2, 0.1) 800 particles
@@ -115,9 +134,16 @@ int main(int argc, char *argv[]){
   igl::grid(res,q);
   q.array() = 0.55 * 2 * (q.array() - 0.5);
   q.col(0) = q.col(0) * 2;
-
   q.col(0) =  q.col(0) + Eigen::MatrixXd(numofparticles,1).setConstant(0.1);
   q.col(1) =  q.col(1) - Eigen::MatrixXd(numofparticles,1).setConstant(0.45);
+*/
+
+  // square
+  numofparticles = l * l;
+  Eigen::Vector2d res(l,l);
+  igl::grid(res,q);
+  q.array() = 0.55 * 2 * q.array();
+
   //std::cout << q.row(0) << q.row(399) << std::endl;
   // 
   // q.resize(numofparticles, 3);
@@ -130,6 +156,20 @@ int main(int argc, char *argv[]){
   q0 = q; // initial positions
   q_dot.resize(numofparticles, 2);
   q_dot.setZero();
+
+  // initialize gradients
+  grad_i.resize(numofparticles, 3);
+  grad_psi.resize(numofparticles, 3);
+  grad_c.resize(numofparticles, 3);
+  grad_s.resize(numofparticles, 3);
+  grad_st.resize(numofparticles, 3);
+
+  grad_i.setZero();
+  grad_psi.setZero();
+  grad_c.setZero();
+  grad_s.setZero();
+  grad_st.setZero();
+
   
   J.resize(numofparticles, 1);
   J.setConstant(1);

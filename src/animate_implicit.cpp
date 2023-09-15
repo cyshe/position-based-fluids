@@ -31,12 +31,19 @@ void animate_implicit<2>(
     MatrixXd & V,
     VectorXd & J,
     MatrixXi & N,
+    Eigen::MatrixXd & grad_i,
+    Eigen::MatrixXd & grad_psi,
+    Eigen::MatrixXd & grad_c,
+    Eigen::MatrixXd & grad_s,
+    Eigen::MatrixXd & grad_st,
     const Eigen::Matrix<double, 2, 1> & low_bound,
     const Eigen::Matrix<double, 2, 1> & up_bound,
     const int numofparticles,
     const int iters, 
     const double dt,
     const double kappa,
+    const double k_st,
+    const double k_s,
     const bool fd_check,
     const bool bounds,
     const bool converge_check
@@ -189,12 +196,12 @@ void animate_implicit<2>(
         }
 
         double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
-        double k_spring = dt_sqr * 1000; //500000000;
+        double k_spring = dt_sqr * k_s; //500000000;
         double W_dq = cubic_bspline(dq, fac);
+        double k_st_dt_sqr = dt_sqr * k_st; 
+
 
         auto func = TinyAD::scalar_function<2>(TinyAD::range(n));
-        
-
         
         func.add_elements<2>(TinyAD::range(elements.size()), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element){
             using T = TINYAD_SCALAR_TYPE(element);
@@ -220,9 +227,6 @@ void animate_implicit<2>(
                 }
             }
         }
-
-
-
 
 
         std::cout << "Evaluate gradient and hessian" << std::endl;
@@ -308,10 +312,6 @@ void animate_implicit<2>(
 
             Eigen::VectorXd fdscorr_dx;
             fd::finite_gradient(X_flat, scorr, fdscorr_dx, accuracy, 1.0e-7);
-        //std::cout << "Gradient Norm: " << (fdscorr_dx).norm() << std::endl;
-            //std::cout << X_flat << std::endl;
-        //std::cout << "dscorr:" << dscorr_dx << std::endl;
-        //std::cout << "fdscorr:" << fdscorr_dx << std::endl;
             std::cout << "Gradient Error: " << (dscorr_dx - fdscorr_dx).array().abs().maxCoeff() << std::endl;
 
             Eigen::MatrixXd fd2sc_dx2;
@@ -332,20 +332,24 @@ void animate_implicit<2>(
         //std::cout << "symmetry" << (d2c_dx2 - d2c_dx2.transpose()).norm() << std::endl;
 
         VectorXd dpsi_dJ = kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
-        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + d2sc_dx2.sparseView()+surface_tension_hessian<2>(X_flat, neighbors, h, m, fac, kappa).sparseView();// + d2c_dx2.sparseView(); 
-        b = -(M) * (X_flat - x_hat) - dscorr_dx
-          + B.transpose() * (V_b_inv * dpsi_dJ
-          + V_b_inv*H*V_b_inv*(Jx - J_curr)) - surface_tension_gradient<2>(X_flat, neighbors, h, m, fac, kappa);
+        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B 
+            +d2sc_dx2.sparseView()
+            +surface_tension_hessian<2>(X_flat, neighbors, 3 * h, m, fac, k_st_dt_sqr).sparseView();
+        
+        b = -(M) * (X_flat - x_hat) 
+          + B.transpose() * (V_b_inv * dpsi_dJ+ V_b_inv*H*V_b_inv*(Jx - J_curr))
+          - dscorr_dx
+          - surface_tension_gradient<2>(X_flat, neighbors, 3 * h, m, fac, k_st_dt_sqr);
 
         //std::cout << "d2sc_dx2 size" << d2sc_dx2.size() << std::endl;
         //std::cout << "dscorr_dx size" << dscorr_dx.size() << std::endl;
         //std::cout << "A size" << A.size() << std::endl;
         //std::cout << "b size" << b.size() << std::endl;
         //std::cout << "b - inertial: " << (M * (X_flat - x_hat) ).norm() << std::endl;
-        //std::cout << "b - tensile instability: " << dscorr_dx.norm() << std::endl;
         //std::cout << "b - elastic: " << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << std::endl;
         //std::cout << "b - constraint: " << (B.transpose()* (V_b_inv*H*V_b_inv*(J_curr-Jx))).norm() << std::endl;
-
+        //std::cout << "b - tensile instability: " << dscorr_dx.norm() << std::endl;
+        //std::cout << "b - surface tension: " << surface_tension_gradient<2>(X_flat, neighbors, h, m, fac, k_st).norm() << std::endl;
 
         //std::cout << "start solve" << std::endl;
         solver.compute(A);
@@ -361,11 +365,20 @@ void animate_implicit<2>(
 
         //begin = std::chrono::high_resolution_clock::now();
 
-        VectorXd X_new_flat, delta_X, J_new, delta_J, lambda_1, lambda_2, lambda_3;
+        VectorXd X_new_flat, delta_X, J_new, delta_J, 
+            delta_X_i, delta_X_psi, delta_X_c, delta_X_s, delta_X_st,
+            lambda_1, lambda_2, lambda_3;
         X_new_flat.resize(n*2);
         delta_X.resize(n*2);
         J_new.resize(n);
         delta_J.resize(n);
+
+        delta_X_i.resize(n*2);
+        delta_X_psi.resize(n*2);
+        delta_X_c.resize(n*2);
+        delta_X_s.resize(n*2);
+        delta_X_st.resize(n*2);
+        
         lambda_1.resize(n);
         lambda_2.resize(n);
         lambda_3.resize(n);
@@ -373,11 +386,33 @@ void animate_implicit<2>(
         X_new_flat.setZero();
         J_new.setZero();
         delta_J.setZero();
+
+        delta_X_i.setZero();
+        delta_X_psi.setZero();
+        delta_X_c.setZero();
+        delta_X_s.setZero();
+        delta_X_st.setZero();
+
         lambda_1.setZero();
         lambda_2.setZero();
         lambda_3.setZero();
 
-        delta_X = solver.solve(b);
+
+        delta_X_i = solver.solve(-(M) * (X_flat - x_hat));
+        delta_X_psi = solver.solve(B.transpose() * (V_b_inv * dpsi_dJ));
+        delta_X_c = solver.solve(B.transpose() * (V_b_inv*H*V_b_inv*(J_curr-Jx)));
+        delta_X_s = solver.solve(-dscorr_dx);
+        delta_X_st = solver.solve(-surface_tension_gradient<2>(X_flat, neighbors, 3 * h, m, fac, k_st_dt_sqr));
+        Eigen::VectorXd density = Eigen::VectorXd::Zero(n);
+        density = calculate_densities<2>(X_flat, h, m, fac);
+        for (int i = 0; i < n; i++){
+            double density_mean = density.mean();
+            if (density[i] > density_mean){
+                delta_X_st.segment<2>(2*i) = Eigen::Vector2d::Zero();
+            }
+        }
+
+        delta_X = delta_X_i + delta_X_psi + delta_X_c + delta_X_s + delta_X_st;
 
         //std::cout << "solved" << std::endl;
         lambda_1 = -V_b_inv * kappa_dt_sqr * (J_curr - VectorXd::Ones(n));
@@ -425,24 +460,28 @@ void animate_implicit<2>(
                     e_s += 0.5 * k_spring * (Wij - W_dq) * (Wij - W_dq);
                 }
             }
-            //std::cout << "e_i: " << e_i << std::endl;
-            //std::cout << "e_psi: " << e_psi << std::endl;
-            //std::cout << "e_c: " << e_c << std::endl;
-            //std::cout << "e_s: " << e_s << std::endl;
-            
-            return e_i + e_psi + e_c + e_s+surface_tension_energy<2>(X_new_flat, neighbors, h, m, fac, kappa);
+
+            double e_st = surface_tension_energy<2>(X_new_flat, neighbors, 3 * h, m, fac, k_st_dt_sqr);
+            /*
+            std::cout << "e_i: " << e_i << std::endl;
+            std::cout << "e_psi: " << e_psi << std::endl;
+            std::cout << "e_c: " << e_c << std::endl;
+            std::cout << "e_s: " << e_s << std::endl;
+            std::cout << "e_st: " << surface_tension_energy<2>(X_new_flat, neighbors, h, m, fac, k_st) << std::endl;
+            */
+            return e_i + e_psi + e_c + e_s + e_st;
         };
         
         e0 = energy_func(0);
         std::cout << "e0: " << e0 << std::endl;
         double e_new = energy_func(1.0);
-
+/*
         while (e_new > e0 && alpha > 1e-10){ 
         //    //std::cout << "alpha: " << alpha << std::endl;
             alpha *= 0.5;
             e_new = energy_func(alpha);
         }
-        
+       
         if (alpha < 1e-10 && it == 0){
             std::cout << "line search failed" << std::endl;
             SelfAdjointEigenSolver<MatrixXd> es;
@@ -451,7 +490,7 @@ void animate_implicit<2>(
             //std::cout << delta_X << std::endl;
             //exit(1);
         }
-
+        */
 //        SelfAdjointEigenSolver<MatrixXd> es;
 //        es.compute(MatrixXd(A));
 //        std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose() << std::endl;
@@ -485,7 +524,23 @@ void animate_implicit<2>(
         for (int i = 0; i < n; i++) {
             X_curr(i, 0) = X_new_flat(2*i);
             X_curr(i, 1) = X_new_flat(2*i+1);
+            
             J_curr(i) = J_new(i);
+
+            grad_i(i, 0) = delta_X_i(2*i);
+            grad_i(i, 1) = delta_X_i(2*i+1);
+            
+            grad_psi(i, 0) = delta_X_psi(2*i);
+            grad_psi(i, 1) = delta_X_psi(2*i+1);
+            
+            grad_c(i, 0) = delta_X_c(2*i);
+            grad_c(i, 1) = delta_X_c(2*i+1);
+            
+            grad_s(i, 0) = delta_X_s(2*i);
+            grad_s(i, 1) = delta_X_s(2*i+1);
+            
+            grad_st(i, 0) = delta_X_st(2*i);
+            grad_st(i, 1) = delta_X_st(2*i+1);
         }
         std::cout << "iteration: " << it << "," << delta_X.norm() << std::endl;
         it += 1;
@@ -498,7 +553,8 @@ void animate_implicit<2>(
     V = (X_curr-X)/dt;
     X = X_curr;
     J = J_curr;     
-        
+
+
     //std::cout << X << std::endl;
     // boundary detection
     if (bounds) {
@@ -525,12 +581,19 @@ void animate_implicit<3>(
     MatrixXd & V, 
     VectorXd & J,
     MatrixXi & N,
+    Eigen::MatrixXd & grad_i,
+    Eigen::MatrixXd & grad_psi,
+    Eigen::MatrixXd & grad_c,
+    Eigen::MatrixXd & grad_s,
+    Eigen::MatrixXd & grad_st,
     const Eigen::Matrix<double, 3, 1> & low_bound,
     const Eigen::Matrix<double, 3, 1> & up_bound,
     const int numofparticles,
     const int iters, 
     const double dt,
     const double kappa,
+    const double k_st,
+    const double k_s,
     const bool fd_check,
     const bool bounds,
     const bool converge_check

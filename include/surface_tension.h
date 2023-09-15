@@ -13,15 +13,8 @@ double surface_tension_energy(
 ){
     int n = x.size() / DIM;
     Eigen::VectorXd densities = Eigen::VectorXd::Zero(x.size() / DIM);
-    for (int i = 0; i < n; i++){
-        for (int j = 0; j < n; j++){
-            auto& xi = x.segment<2>(2 * i);
-            auto& xj = x.segment<2>(2 * j);
-            double r = (xj - xi).norm()/h;
-            densities(i) += cubic_bspline(r, m*fac);
-        }
-    }
-
+    densities = calculate_densities<DIM>(x, h, m, fac);
+    
     double energy = 0.0;
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
@@ -45,16 +38,8 @@ Eigen::VectorXd surface_tension_gradient(
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(x.size());
 
     Eigen::VectorXd densities = Eigen::VectorXd::Zero(x.size() / DIM);
-    for (int i = 0; i < n; i++){
-        for (int j = 0; j < n; j++){
-            auto& xi = x.segment<2>(2 * i);
-            auto& xj = x.segment<2>(2 * j);
-            double r = (xj - xi).norm()/h;
-            densities(i) += cubic_bspline(r, m*fac);
-        }
-    }
-
-
+    
+    densities = calculate_densities<DIM>(x, h, m, fac);
 
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(x.size(), n);
 
@@ -85,7 +70,8 @@ Eigen::VectorXd surface_tension_gradient(
 };
 
 template <int DIM>
-Eigen::MatrixXd surface_tension_hessian(Eigen::VectorXd & x,
+Eigen::MatrixXd surface_tension_hessian(
+    Eigen::VectorXd & x,
     std::vector<std::vector<int>> neighbors,
     const double h,
     const double m,
@@ -94,5 +80,29 @@ Eigen::MatrixXd surface_tension_hessian(Eigen::VectorXd & x,
 ){
     
     Eigen::VectorXd grad = surface_tension_gradient<DIM>(x, neighbors, h, m, fac, kappa);
+    if(kappa == 0){
+        return grad * grad.transpose();
+    }
+    
     return grad * grad.transpose()/kappa;
+};
+
+template <int DIM>
+Eigen::VectorXd calculate_densities(
+    const Eigen::VectorXd & x,
+    const double h,
+    const double m,
+    const double fac
+){
+    int n = x.size() / DIM;
+    Eigen::VectorXd densities = Eigen::VectorXd::Zero(x.size() / DIM);
+    for (int i = 0; i < n; i++){
+        for (int j = 0; j < n; j++){
+            auto& xi = x.segment<2>(2 * i);
+            auto& xj = x.segment<2>(2 * j);
+            double r = (xj - xi).norm()/h;
+            densities(i) += cubic_bspline(r, m*fac);
+        }
+    }
+    return densities;
 };
