@@ -12,6 +12,8 @@
 #include <cmath>
 #include <igl/grid.h>
 
+#include "cubic_bspline.h"
+
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -32,15 +34,17 @@ Vector2d upper_bound;
 
 int iters = 10;
 double dt = 0.03;
-double kappa = 100;
-double k_st = 0.1;
-double k_s = 1000;
+double kappa = 1;
+double k_st = 1;
+double k_s = 1;
+double st_threshold = 0.9;
 
 void callback() {
 
   static bool is_simulating = false; static bool write_sequence = false;
   static bool fd_check = false;
   static bool converge_check = false;
+  static bool do_line_search = false;
   static bool bounds = true;
   static int frame = 0;
 
@@ -61,6 +65,7 @@ void callback() {
   }
 
   ImGui::Checkbox("Iterate until Convergence", &converge_check);
+  ImGui::Checkbox("Do line search", &do_line_search);
   ImGui::Checkbox("Boundaries", &bounds);
 
   ImGui::InputInt("Solver Iterations", &iters);
@@ -75,19 +80,21 @@ void callback() {
     //animate_sph<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     //animate_fluids<2>(q, q_dot, N, lower_bound, upper_bound, numofparticles, iters, dt);
     grad_i.setZero(); grad_psi.setZero();
-    grad_c.setZero(); grad_s.setZero();
+    grad_s.setZero();
     grad_st.setZero();
 
     animate_implicit<2>(q, q_dot, J, N, 
-      grad_i, grad_psi, grad_c, grad_s, grad_st,
+      grad_i, grad_psi, grad_s, grad_st,
       lower_bound, upper_bound, numofparticles, iters, dt, 
-      kappa, k_st, k_s, fd_check, bounds, converge_check);
+      kappa, k_st, k_s, st_threshold, fd_check, bounds, converge_check, do_line_search);
 
     psCloud->updatePointPositions2D(q);
-    psCloud->addVectorQuantity("velocity", grad_i + grad_psi + grad_c + grad_s + grad_st, polyscope::VectorType::STANDARD)->setEnabled(true);
-    psCloud->addVectorQuantity("kappa", grad_i + grad_psi + grad_c, polyscope::VectorType::STANDARD)->setEnabled(true);
-    psCloud->addVectorQuantity("Spring grad", grad_s, polyscope::VectorType::STANDARD)->setEnabled(true);
-    psCloud->addVectorQuantity("Surface Tension grad", grad_st, polyscope::VectorType::STANDARD)->setEnabled(true);
+    psCloud->addVectorQuantity("total gradient", grad_i + grad_psi + grad_s + grad_st, polyscope::VectorType::STANDARD);
+    psCloud->addVectorQuantity("inertia grad", grad_i, polyscope::VectorType::STANDARD);
+    psCloud->addVectorQuantity("psi grad", grad_psi, polyscope::VectorType::STANDARD);
+    psCloud->addVectorQuantity("spacing grad", grad_s, polyscope::VectorType::STANDARD);
+    psCloud->addVectorQuantity("surface tension grad", grad_st, polyscope::VectorType::STANDARD)->setEnabled(true);
+    psCloud->addScalarQuantity("J", J)->setEnabled(true);
     ++frame;
     // std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
@@ -199,6 +206,8 @@ int main(int argc, char *argv[]){
   //psCloud->addVectorQuantity("velocity", q, polyscope::VectorType::STANDARD);
   // set some options
   psCloud->setPointRadius(0.005);
+
+  psCloud->addScalarQuantity("J", J)->setEnabled(true);
 
   // If rendering becomes slow, enable this
   // psCloud->setPointRenderMode(polyscope::PointRenderMode::Quad);
