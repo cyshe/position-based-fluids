@@ -4,6 +4,8 @@
 #include "cubic_bspline.h"
 #include "calculate_densities.h"
 
+#include <iostream> // remove
+
 template <int dim>
 double surface_tension_energy(
     Eigen::VectorXd & x,
@@ -57,12 +59,20 @@ Eigen::VectorXd surface_tension_gradient(
         }
     }
 
+    // Now compute surface tension gradient
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
             grad += kappa * (B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j]));
         }
     }
-    
+
+    // Complete hack! Mask off gradient for particles with density above threshold
+    for (int i = 0; i < n; i++){
+        if (densities(i) > threshold){
+            grad.segment<dim>(dim * i) = Eigen::VectorXd::Zero(dim);
+        }
+    }
+
     return grad;
 };
 

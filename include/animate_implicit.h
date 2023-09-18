@@ -22,6 +22,8 @@ void animate_implicit(
     const double k_st,
     const double k_s,
     const double st_threshold,
+    const double rho_0,
+    const double gravity,
     const bool fd_check = false,
     const bool bounds = true,
     const bool converge_check = false,

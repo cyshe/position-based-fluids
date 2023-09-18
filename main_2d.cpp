@@ -13,6 +13,8 @@
 #include <igl/grid.h>
 
 #include "cubic_bspline.h"
+#include "calculate_densities.h"
+#include "find_neighbors_brute_force.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -34,19 +36,23 @@ Vector2d upper_bound;
 
 int iters = 10;
 double dt = 0.03;
-double kappa = 1;
-double k_st = 1;
+double k_psi = 10;
 double k_s = 1;
-double st_threshold = 0.9;
+double k_st = 0.1;
+double st_threshold = 0.65;
+double rho_0 = 3.5;
+double h = 0.2;
+double fac = 10/7/M_PI;
 
 void callback() {
 
   static bool is_simulating = false; static bool write_sequence = false;
   static bool fd_check = false;
-  static bool converge_check = false;
+  static bool converge_check = true;
   static bool do_line_search = false;
   static bool bounds = true;
   static int frame = 0;
+  static double gravity = 0.0;
 
   ImGui::PushItemWidth(100);
 
@@ -68,10 +74,13 @@ void callback() {
   ImGui::Checkbox("Do line search", &do_line_search);
   ImGui::Checkbox("Boundaries", &bounds);
 
-  ImGui::InputInt("Solver Iterations", &iters);
-  ImGui::InputDouble("Kappa", &kappa);
-  ImGui::InputDouble("k_st", &k_st);
-  ImGui::InputDouble("k_spring", &k_s);
+  ImGui::InputInt("solver max iterations", &iters);
+  ImGui::InputDouble("k_psi", &k_psi);
+  ImGui::InputDouble("k_spacing", &k_s);
+  ImGui::InputDouble("k_surface_tension", &k_st);
+  ImGui::InputDouble("surface_tension_threshold", &st_threshold);
+  ImGui::InputDouble("rho_0", &rho_0);
+  ImGui::InputDouble("gravity", &gravity);
 
   // Perform simulation step
   ImGui::Checkbox("Simulate", &is_simulating);
@@ -86,7 +95,8 @@ void callback() {
     animate_implicit<2>(q, q_dot, J, N, 
       grad_i, grad_psi, grad_s, grad_st,
       lower_bound, upper_bound, numofparticles, iters, dt, 
-      kappa, k_st, k_s, st_threshold, fd_check, bounds, converge_check, do_line_search);
+      k_psi, k_st, k_s, st_threshold, rho_0, gravity,
+      fd_check, bounds, converge_check, do_line_search);
 
     psCloud->updatePointPositions2D(q);
     psCloud->addVectorQuantity("total gradient", grad_i + grad_psi + grad_s + grad_st, polyscope::VectorType::STANDARD);
@@ -105,9 +115,15 @@ void callback() {
   if (ImGui::Button("Reset")) {
     q = q0;
     q_dot.setZero();
-    J.setConstant(1);
     psCloud->updatePointPositions2D(q);
     frame = 0;
+
+    MatrixXd X = q.transpose();
+    VectorXd x = Eigen::Map<VectorXd>(X.data(), X.size());
+    std::vector<std::vector<int>> neighbors = find_neighbors_brute_force<2>(x, h);
+    J = calculate_densities<2>(x, neighbors, h, 1.0, fac) / rho_0;
+    psCloud->addScalarQuantity("J", J)->setEnabled(true);
+
   }
 }
 
@@ -177,25 +193,12 @@ int main(int argc, char *argv[]){
   grad_s.setZero();
   grad_st.setZero();
 
-  
-  J.resize(numofparticles, 1);
-  J.setConstant(1);
-
   // Initialize J values
-  double h = 0.1;
-  double rho_0 = 1;
-  double fac = 10/7/M_PI;
-
-  J.setZero();
-  for (int i = 0; i < numofparticles; i++){
-    for (int j = 0; j < numofparticles; j++){
-        double r = (q.row(j) - q.row(i)).norm()/h;
-        J(i) += cubic_bspline(r, fac) / rho_0;
-    }
-  }
-
+  MatrixXd X = q.transpose();
+  VectorXd x = Eigen::Map<VectorXd>(X.data(), X.size());
+  std::vector<std::vector<int>> neighbors = find_neighbors_brute_force<2>(x, h);
+  J = calculate_densities<2>(x, neighbors, h, 1.0, fac) / rho_0;
   
-  std::cout << "Stop initializing J this way" << std::endl;
   std::cout << "initializing J with h = " << h << " and rho_0 = " << rho_0 << std::endl;
   std::cout << "J first 20 " << J.head(20) << std::endl;
   std::cout << "Jx = " << J(5) << " " << J(16) << " " << J(24)  << std::endl;

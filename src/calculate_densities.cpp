@@ -32,11 +32,16 @@ Eigen::VectorXd calculate_densities(
 )
 {
     int n = x.size() / dim;
-    Eigen::VectorXd densities = Eigen::VectorXd::Zero(x.size() / dim);
+    assert(neighbors.size() == n);
+
+    double initial_density = cubic_bspline(0.0, m*fac);
+
+    // Eigen::VectorXd densities = Eigen::VectorXd::Constant(n, initial_density);
+    Eigen::VectorXd densities = Eigen::VectorXd::Zero(n);
     for (int i = 0; i < n; i++){
-        for (int j = 0; j < n; j++){
+        for (int j = 0; j < neighbors[i].size(); j++){
             const auto& xi = x.template segment<dim>(dim * i);
-            const auto& xj = x.template segment<dim>(dim * j);
+            const auto& xj = x.template segment<dim>(dim * neighbors[i][j]);
             double r = (xj - xi).norm()/h;
             densities(i) += cubic_bspline(r, m*fac);
         }

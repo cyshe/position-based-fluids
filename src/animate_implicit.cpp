@@ -48,6 +48,8 @@ void animate_implicit<2>(
     const double k_st,
     const double k_s,
     const double st_threshold,
+    const double rho_0,
+    const double gravity,
     const bool fd_check,
     const bool bounds,
     const bool converge_check,
@@ -61,9 +63,6 @@ void animate_implicit<2>(
     const double h = 0.2; // h for particle distance
     const double vol = 1;//m/rho_0;
     const double fac = 10/7/M_PI; // bspline normalizing coefficient
-    double rho_0 = 1;    // rest density
-
-    int it = 0; //iteration number
 
     // Energy scales
     const double dt_sqr = dt * dt;
@@ -77,7 +76,7 @@ void animate_implicit<2>(
 
     MatrixXd f_ext(n, 2);
     f_ext.setZero();
-    //f_ext.col(1).setConstant(-9.8);
+    f_ext.col(1).setConstant(gravity);
         
     // Sparse matrices
     SparseMatrix<double> A, M, B, H, V_b, V_b_inv, H_inv;
@@ -128,7 +127,7 @@ void animate_implicit<2>(
     SimplicialLDLT<SparseMatrix<double>> solver;
 
     // Newton solver
-    while (converge_check || it < iters) {
+    for (int it = 0; it < iters; it++) {
         //auto begin = std::chrono::high_resolution_clock::now();
 
         // Initialize new neighbor list
@@ -201,13 +200,13 @@ void animate_implicit<2>(
 
         // Assemble left and right hand sides of system
         A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B  + H_spacing
-            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st_dt_sqr, st_threshold).sparseView();
+            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold).sparseView();
 
         VectorXd dpsi_dJ = kappa_dt_sqr * (J - VectorXd::Ones(n));
         VectorXd b_inertial = -M * (x - x_hat);
         VectorXd b_psi = B.transpose() * (V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(Jx - J));
         VectorXd b_scorr = -g_spacing;
-        VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st_dt_sqr, st_threshold);
+        VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold);
 
         b = b_inertial + b_psi + b_scorr + b_st;
 
@@ -252,7 +251,7 @@ void animate_implicit<2>(
 
             // Surface tension energy
             double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st_dt_sqr,
-                st_threshold);
+                rho_0 * st_threshold);
             return e_i + e_psi + e_c + e_s + e_st;
         };
 
@@ -311,7 +310,7 @@ void animate_implicit<2>(
 
         double residual = delta_x.norm() / n / dt;
         std::cout << "iteration: " << it << ", residual: " << residual << std::endl;
-        it += 1;
+
         if (residual < 2e-3 && converge_check) {
             std::cout << "converged" << std::endl;
             break;
@@ -363,6 +362,8 @@ void animate_implicit<3>(
     const double k_st,
     const double k_s,
     const double st_threshold,
+    const double rho_0,
+    const double gravity,
     const bool fd_check,
     const bool bounds,
     const bool converge_check,
