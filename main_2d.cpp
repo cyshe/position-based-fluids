@@ -148,7 +148,7 @@ int main(int argc, char *argv[]){
   // Initialize positions
 
   double l = 15;
-/*
+
   //rectangle
   numofparticles = l* 2 *l;
 
@@ -159,14 +159,14 @@ int main(int argc, char *argv[]){
   q.col(0) = q.col(0) * 2;
   q.col(0) =  q.col(0) + Eigen::MatrixXd(numofparticles,1).setConstant(0.1);
   q.col(1) =  q.col(1) - Eigen::MatrixXd(numofparticles,1).setConstant(0.45);
-*/
 
+/*
   // square
   numofparticles = l * l;
   Eigen::Vector2d res(l,l);
   igl::grid(res,q);
   q.array() = 0.55 * 2 * q.array();
-
+*/
   //std::cout << q.row(0) << q.row(399) << std::endl;
   // 
   // q.resize(numofparticles, 3);

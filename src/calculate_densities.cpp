@@ -1,5 +1,6 @@
 #include "calculate_densities.h"
 #include "cubic_bspline.h"
+#include <Eigen/Core>
 
 using namespace Eigen;
 
@@ -12,7 +13,7 @@ Matrix<double, dim*dim, 1> density_gradient(
     const double fac)
 {
     Matrix<double, dim*dim, 1> grad;
-    Vector<double, dim> xij = xj - xi;
+    Matrix<double, dim, 1> xij = xj - xi;
     double r = xij.norm() / h;
     double deriv = cubic_bspline_derivative(r, m*fac);
 
