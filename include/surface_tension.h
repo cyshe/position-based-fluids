@@ -22,7 +22,18 @@ double surface_tension_energy(
     double energy = 0.0;
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
-            energy += 0.5 * kappa * (densities(i) - densities(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j]));
+            double mollifier;
+            if (densities(i) >  1.5 * threshold){
+                mollifier = 1;
+            }
+            else if (densities(i) > 0.75 * threshold) {
+                double x_div_eps = densities(i) / ((1.5 - 0.75) * threshold);
+                mollifier =  (2 - x_div_eps) * x_div_eps;
+            }
+            else{
+                mollifier = 1;
+            }
+            energy += 0.5 * kappa * (densities(i) - densities(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mollifier;
         }
     }
     return energy;
@@ -68,8 +79,11 @@ Eigen::VectorXd surface_tension_gradient(
 
     // Complete hack! Mask off gradient for particles with density above threshold
     for (int i = 0; i < n; i++){
-        if (densities(i) > threshold){
+        if (densities(i) >  1.5 * threshold){
             grad.segment<dim>(dim * i) = Eigen::VectorXd::Zero(dim);
+        }
+        else if (densities(i) > 0.75 * threshold) {
+            grad.segment<dim>(dim * i) = grad.segment<dim>(dim * i) * (1 - (densities(i) - 0.75 * threshold) / ((1.5- 0.75) * threshold)) * 2 / ((1.5- 0.75) * threshold);
         }
     }
 

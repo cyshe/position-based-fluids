@@ -9,7 +9,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+#list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 #include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -34,6 +34,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(finite-diff)
 
+
+FetchContent_Declare(
+    ipc_toolkit
+    GIT_REPOSITORY https://github.com/ipc-sim/ipc-toolkit.git
+    GIT_TAG v1.1.1
+    GIT_SHALLOW FALSE
+)
+FetchContent_MakeAvailable(ipc_toolkit)
+
 # Polyscope 
 add_subdirectory("deps/polyscope")
 
@@ -43,13 +52,15 @@ add_subdirectory("deps/polyscope")
 add_executable(${PROJECT_NAME} main.cpp ${CPP_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC polyscope Eigen3::Eigen)
 target_link_libraries(${PROJECT_NAME} PUBLIC finitediff::finitediff)
+#target_link_libraries(${PROJECT_NAME} PUBLIC ipc::toolkit)
 
 add_executable(main_2d main_2d.cpp ${CPP_FILES})
 target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)# CompactNSearch)
 target_link_libraries(main_2d PUBLIC finitediff::finitediff)
-target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)
+target_link_libraries(main_2d PUBLIC ipc::toolkit)
 
 add_executable(smoke_sim smoke_sim.cpp ${CPP_FILES})
 target_link_libraries(smoke_sim PUBLIC polyscope Eigen3::Eigen)# CompactNSearch)
 target_link_libraries(smoke_sim PUBLIC finitediff::finitediff)
 target_link_libraries(smoke_sim PUBLIC polyscope Eigen3::Eigen)
+#target_link_libraries(smoke_sim PUBLIC ipc::toolkit)
