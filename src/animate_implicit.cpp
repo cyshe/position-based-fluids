@@ -1,6 +1,7 @@
 #include "animate_implicit.h"
 #include "calculate_lambda.h"
 #include "surface_tension.h"
+#include "boundary_conditions.h"
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -51,7 +52,7 @@ void animate_implicit<2>(
     const double rho_0,
     const double gravity,
     const bool fd_check,
-    const bool bounds,
+    const bool bounds_bool,
     const bool converge_check,
     const bool do_line_search
     ){
@@ -197,18 +198,23 @@ void animate_implicit<2>(
         //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
         //printf("Time measured 2: %.3f seconds.\n", elapsed.count() * 1e-9);
         //begin = std::chrono::high_resolution_clock::now();
+        
+        //Eigen::MatrixXd points = Eigen::Map<MatrixXd>(x.data(), 2, n).transpose();
+
+
 
         // Assemble left and right hand sides of system
         A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B  + H_spacing
-            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold).sparseView();
-
+            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold).sparseView()
+            + bounds_hessian<2>(x, low_bound, up_bound, bounds_bool).sparseView();
         VectorXd dpsi_dJ = kappa_dt_sqr * (J - VectorXd::Ones(n));
         VectorXd b_inertial = -M * (x - x_hat);
         VectorXd b_psi = B.transpose() * (V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(Jx - J));
         VectorXd b_scorr = -g_spacing;
         VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold);
+        VectorXd b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, bounds_bool);
 
-        b = b_inertial + b_psi + b_scorr + b_st;
+        b = b_inertial + b_psi + b_scorr + b_st + b_bounds;
 
         // Solve for descent direction
         solver.compute(A);
@@ -252,7 +258,10 @@ void animate_implicit<2>(
             // Surface tension energy
             double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st_dt_sqr,
                 rho_0 * st_threshold);
-            return e_i + e_psi + e_c + e_s + e_st;
+
+            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound, bounds_bool);
+            
+            return e_i + e_psi + e_c + e_s + e_st + e_bound;
         };
 
         // Perform line search (if enabled) and update variables
@@ -325,6 +334,7 @@ void animate_implicit<2>(
 
     //std::cout << X << std::endl;
     // boundary detection
+    /*
     if (bounds) {
         for (int i = 0; i < n; i++){
             for (int j = 0; j < 2; ++j) {
@@ -339,7 +349,7 @@ void animate_implicit<2>(
             }
         }
     }
-    
+    */
     return;
 }
 

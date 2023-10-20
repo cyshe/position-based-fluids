@@ -11,7 +11,7 @@
 #include <sstream>
 #include <cmath>
 #include <igl/grid.h>
-
+#include "ipc/ipc.hpp"
 #include "cubic_bspline.h"
 #include "calculate_densities.h"
 #include "find_neighbors_brute_force.h"

@@ -23,7 +23,7 @@ file(GLOB CPP_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 
 # Eigen
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -42,6 +42,7 @@ FetchContent_Declare(
     GIT_SHALLOW FALSE
 )
 FetchContent_MakeAvailable(ipc_toolkit)
+include_directories(${ipc_toolkit_SOURCE_DIR})
 
 # Polyscope 
 add_subdirectory("deps/polyscope")
