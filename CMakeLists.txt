@@ -42,7 +42,8 @@ FetchContent_Declare(
     GIT_SHALLOW FALSE
 )
 FetchContent_MakeAvailable(ipc_toolkit)
-include_directories(${ipc_toolkit_SOURCE_DIR})
+include_directories(${ipc_toolkit_SOURCE_DIR}/src)
+message(${ipc_toolkit_SOURCE_DIR}/src)
 
 # Polyscope 
 add_subdirectory("deps/polyscope")
