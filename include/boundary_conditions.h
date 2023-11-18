@@ -4,7 +4,12 @@
 #include "cubic_bspline.h"
 #include "calculate_densities.h"
 #include <ipc/ipc.hpp>
+#include <ipc/utils/eigen_ext.hpp>
 #include <iostream> // remove
+#include <ipc/distance/point_edge.hpp>
+#include <ipc/distance/edge_edge.hpp>
+#include <ipc/distance/edge_edge_mollifier.hpp>
+#include <ipc/barrier/barrier.hpp>
 
 template <int dim>
 double bounds_energy(
@@ -45,7 +50,7 @@ double bounds_energy(
             }
 
             d = ipc::point_edge_distance(point, e0, e1);
-            energy += d * ipc::edge_edge_mollifier(d, 0.1);
+            energy += ipc::barrier(d, 0.05);
         }
     }
     return energy;
@@ -90,8 +95,8 @@ Eigen::VectorXd bounds_gradient(
             }
         
             d = ipc::point_edge_distance(point, e0, e1);
-            grad += ipc::point_edge_distance_gradient(point, e0, e1) * ipc::edge_edge_mollifier(d, 0.1)
-                + d * ipc::edge_edge_mollifier_gradient(d, 0.1);
+            grad.segment<dim>(dim * i) += ipc::point_edge_distance_gradient(point, e0, e1).segment<dim>(0) * 
+                ipc::barrier_gradient(d, 0.05);
         }
     }
 
@@ -136,9 +141,12 @@ Eigen::MatrixXd bounds_hessian(
             }
         
             d = ipc::point_edge_distance(point, e0, e1);
-            hessian += ipc::point_edge_distance_hessian(point, e0, e1) * ipc::edge_edge_mollifier(d, 0.1)
-                + ipc::pont_edge_distance_gradient(point, e0, e1) * ipc::edge_edge_mollifier_gradient(d, 0.1)
-                + d * ipc::edge_edge_mollifier_hessian(d, 0.1);
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_gradient(d, 0.05)
+            * ipc::point_edge_distance_hessian(point, e0, e1).block<dim, dim>(0, 0);
+                 
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_hessian(d, 0.05)
+                * ipc::point_edge_distance_gradient(point, e0, e1).segment<dim>(0)
+                * ipc::point_edge_distance_gradient(point, e0, e1).segment<dim>(0).transpose();
         }   
     }
     

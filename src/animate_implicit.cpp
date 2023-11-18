@@ -15,6 +15,7 @@
 #include "TinyAD/VectorFunction.hh"
 
 #include "spacing_energy.h"
+#include "pressure.h"
 #include "find_neighbors_brute_force.h"
 #include "calculate_densities.h"
 #include "cubic_bspline.h"
@@ -202,20 +203,21 @@ void animate_implicit<2>(
         //Eigen::MatrixXd points = Eigen::Map<MatrixXd>(x.data(), 2, n).transpose();
 
 
-
         // Assemble left and right hand sides of system
-        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B  + H_spacing
+        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + H_spacing
             + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold).sparseView()
             + bounds_hessian<2>(x, low_bound, up_bound, bounds_bool).sparseView();
         VectorXd dpsi_dJ = kappa_dt_sqr * (J - VectorXd::Ones(n));
         VectorXd b_inertial = -M * (x - x_hat);
-        VectorXd b_psi = B.transpose() * (V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(Jx - J));
-        VectorXd b_scorr = -g_spacing;
+        VectorXd b_psi = B.transpose() * (V_b_inv * psi_gradient<2>(x, J, neighbors, h, m, fac, kappa, rho_0 * st_threshold) + V_b_inv*H*V_b_inv*(Jx - J));
+        VectorXd b_spacing = -g_spacing;
         VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold);
         VectorXd b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, bounds_bool);
 
-        b = b_inertial + b_psi + b_scorr + b_st + b_bounds;
 
+        b = b_inertial + h*h * (b_psi + b_spacing + b_st + b_bounds);
+
+        std::cout << "end" << std::endl;
         // Solve for descent direction
         solver.compute(A);
         if (solver.info() != Success) {
@@ -245,8 +247,9 @@ void animate_implicit<2>(
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
             
             // Mixed potential energy
-            double e_psi = 0.5 * kappa_dt_sqr
-                         * (J_new - VectorXd::Ones(n)).squaredNorm();
+            double e_psi = psi_energy<2>(x_new, J_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold);
+            //0.5 * kappa_dt_sqr * (J_new - VectorXd::Ones(n)).squaredNorm();
+
             // Mixed constraint energy
             Jx = calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0;
 
@@ -259,6 +262,7 @@ void animate_implicit<2>(
             double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st_dt_sqr,
                 rho_0 * st_threshold);
 
+            // Boundary energy
             double e_bound = bounds_energy<2>(x_new, low_bound, up_bound, bounds_bool);
             
             return e_i + e_psi + e_c + e_s + e_st + e_bound;
@@ -276,7 +280,7 @@ void animate_implicit<2>(
                 alpha *= 0.5;
                 e_new = energy_func(alpha);
             }
-        
+            std::cout << "!!!alpha: " << alpha << std::endl;
             if (alpha < 1e-10 && it == 0){
                 std::cout << "line search failed" << std::endl;
                 SelfAdjointEigenSolver<MatrixXd> es;
@@ -310,8 +314,8 @@ void animate_implicit<2>(
             grad_psi(i, 0) = b_psi(2*i);
             grad_psi(i, 1) = b_psi(2*i+1);
             
-            grad_s(i, 0) = b_scorr(2*i);
-            grad_s(i, 1) = b_scorr(2*i+1);
+            grad_s(i, 0) = b_spacing(2*i);
+            grad_s(i, 1) = b_spacing(2*i+1);
             
             grad_st(i, 0) = b_st(2*i);
             grad_st(i, 1) = b_st(2*i+1);

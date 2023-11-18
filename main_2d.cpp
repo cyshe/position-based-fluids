@@ -105,6 +105,28 @@ void callback() {
     psCloud->addVectorQuantity("spacing grad", grad_s, polyscope::VectorType::STANDARD);
     psCloud->addVectorQuantity("surface tension grad", grad_st, polyscope::VectorType::STANDARD)->setEnabled(true);
     psCloud->addScalarQuantity("J", J)->setEnabled(true);
+    
+    VectorXd m = VectorXd::Ones(numofparticles);
+    m = J * rho_0;
+    double threshold = st_threshold * rho_0;
+    for (int i = 0; i < numofparticles; i++){
+        double mollifier;
+        if (m(i) >  1.5 * threshold){
+                mollifier = 0;
+            }
+        else if (m(i) > 0.75 * threshold) {
+          double x_div_eps = -(m(i) - 1.5 *threshold) / ((1.5 - 0.75) * threshold);
+                mollifier =  (2 - x_div_eps) * x_div_eps;
+        }
+        else{
+            mollifier = 1;
+        }
+        m(i) = mollifier;
+    }
+    
+    psCloud->addScalarQuantity("Mollifier", m)->setEnabled(true);
+
+
     ++frame;
     // std::cout <<"X = " << q << std:: endl;
     std::cout << frame << std::endl;
@@ -142,16 +164,16 @@ int main(int argc, char *argv[]){
   polyscope::state::userCallback = callback;
 
   // Init bounding box
-  lower_bound << -1.0, -1.0;
+  lower_bound << -1.05, -1.05;
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions
 
   double l = 15;
-/*
+
   //rectangle
   numofparticles = l* 2 *l;
-
+/*
   // (-1, -1), (1.2, 0.1) 800 particles
   Eigen::Vector2d res(2*l,l);
   igl::grid(res,q);

@@ -24,10 +24,10 @@ double surface_tension_energy(
         for (int j = 0; j < neighbors[i].size(); j++){
             double mollifier;
             if (densities(i) >  1.5 * threshold){
-                mollifier = 1;
+                mollifier = 0;
             }
             else if (densities(i) > 0.75 * threshold) {
-                double x_div_eps = densities(i) / ((1.5 - 0.75) * threshold);
+                double x_div_eps = -(densities(i) - 1.5 *threshold) / ((1.5 - 0.75) * threshold);
                 mollifier =  (2 - x_div_eps) * x_div_eps;
             }
             else{
@@ -73,17 +73,24 @@ Eigen::VectorXd surface_tension_gradient(
     // Now compute surface tension gradient
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
-            grad += kappa * (B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j]));
-        }
-    }
+            double mol, mol_grad;
 
-    // Complete hack! Mask off gradient for particles with density above threshold
-    for (int i = 0; i < n; i++){
-        if (densities(i) >  1.5 * threshold){
-            grad.segment<dim>(dim * i) = Eigen::VectorXd::Zero(dim);
-        }
-        else if (densities(i) > 0.75 * threshold) {
-            grad.segment<dim>(dim * i) = grad.segment<dim>(dim * i) * (1 - (densities(i) - 0.75 * threshold) / ((1.5- 0.75) * threshold)) * 2 / ((1.5- 0.75) * threshold);
+            if (densities(i) >  1.5 * threshold){
+                mol = 0;
+                mol_grad = 0;
+            }
+            else if (densities(i) > 0.75 * threshold) {
+                double x_div_eps = -(densities(i) - 1.5 *threshold) / ((1.5 - 0.75) * threshold);
+                mol =  (2 - x_div_eps) * x_div_eps;
+                mol_grad = -32/9 * densities(i) / (threshold * threshold) + 16/3/ threshold;
+            }
+            else{
+                mol = 1;
+                mol_grad = 0;
+            }
+            
+            grad += kappa * (B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol;
+               //+ B.col(i) * mol_grad * (densities(i)-densities(j)) * (densities(i)-densities(j)) *0.5);
         }
     }
 
