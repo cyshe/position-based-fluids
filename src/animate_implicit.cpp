@@ -205,19 +205,19 @@ void animate_implicit<2>(
 
         // Assemble left and right hand sides of system
         A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + H_spacing
-            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold).sparseView()
+            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold).sparseView()
             + bounds_hessian<2>(x, low_bound, up_bound, bounds_bool).sparseView();
-        VectorXd dpsi_dJ = kappa_dt_sqr * (J - VectorXd::Ones(n));
+        VectorXd dpsi_dJ = psi_gradient<2>(x, J, neighbors, h, m, fac, kappa, rho_0 * st_threshold);
+
         VectorXd b_inertial = -M * (x - x_hat);
-        VectorXd b_psi = B.transpose() * (V_b_inv * psi_gradient<2>(x, J, neighbors, h, m, fac, kappa, rho_0 * st_threshold) + V_b_inv*H*V_b_inv*(Jx - J));
+        VectorXd b_psi = B.transpose() * (V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(Jx - J));
         VectorXd b_spacing = -g_spacing;
-        VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st_dt_sqr, rho_0 * st_threshold);
+        VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold);
         VectorXd b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, bounds_bool);
 
 
-        b = b_inertial + h*h * (b_psi + b_spacing + b_st + b_bounds);
+        b = b_inertial + dt * dt * (b_psi + b_spacing + b_st + b_bounds);
 
-        std::cout << "end" << std::endl;
         // Solve for descent direction
         solver.compute(A);
         if (solver.info() != Success) {

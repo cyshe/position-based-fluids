@@ -70,8 +70,7 @@ Eigen::VectorXd psi_gradient(
             else{
                 mollifier = 0;
         }
-        mol = 0;
-        grad(i) *= mol;
+        grad(i) *= mollifier;
     }
     return grad;
 };

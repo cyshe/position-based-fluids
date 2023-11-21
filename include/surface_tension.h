@@ -89,8 +89,8 @@ Eigen::VectorXd surface_tension_gradient(
                 mol_grad = 0;
             }
             
-            grad += kappa * (B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol;
-               //+ B.col(i) * mol_grad * (densities(i)-densities(j)) * (densities(i)-densities(j)) *0.5);
+            grad += kappa * ((B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol
+               + B.col(i) * mol_grad * (densities(i)-densities(j)) * (densities(i)-densities(j)) *0.5);
         }
     }
 

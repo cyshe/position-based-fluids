@@ -39,8 +39,8 @@ double dt = 0.03;
 double k_psi = 10;
 double k_s = 1;
 double k_st = 0.1;
-double st_threshold = 0.65;
-double rho_0 = 3.5;
+double st_threshold = 1.0;
+double rho_0 = 2.0;
 double h = 0.2;
 double fac = 10/7/M_PI;
 
