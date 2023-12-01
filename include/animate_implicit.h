@@ -8,6 +8,7 @@ void animate_implicit(
     Eigen::MatrixXd & X, 
     Eigen::MatrixXd & V, 
     Eigen::VectorXd & J, 
+    Eigen::VectorXd & Jx, 
     Eigen::MatrixXi & N,
     Eigen::MatrixXd & grad_i,
     Eigen::MatrixXd & grad_psi,
@@ -27,7 +28,8 @@ void animate_implicit(
     const bool fd_check = false,
     const bool bounds = true,
     const bool converge_check = false,
-    const bool do_line_search = false
+    const bool do_line_search = false,
+    const bool smooth_mol = false
 );
 
 // Computes derivative of norm of a vector

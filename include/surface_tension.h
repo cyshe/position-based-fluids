@@ -4,7 +4,6 @@
 #include "cubic_bspline.h"
 #include "calculate_densities.h"
 
-#include <iostream> // remove
 
 template <int dim>
 double surface_tension_energy(
@@ -14,15 +13,17 @@ double surface_tension_energy(
     const double m,
     const double fac,
     const double kappa,
-    const double threshold
+    const double threshold,
+    const bool smooth_mol
 ){
     int n = x.size() / dim;
     Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
 
     double energy = 0.0;
+    double mol_k = 200000000;
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
-            double mollifier;
+            double mollifier;/*
             if (densities(i) >  1.5 * threshold){
                 mollifier = 0;
             }
@@ -32,6 +33,13 @@ double surface_tension_energy(
             }
             else{
                 mollifier = 1;
+            }*/
+            mollifier = 1/ (1 + exp(mol_k * (densities(i) - threshold)));
+            if (!smooth_mol){
+                mollifier = 1;
+                if (densities(i) > threshold) {
+                    mollifier = 1;
+                }
             }
             energy += 0.5 * kappa * (densities(i) - densities(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mollifier;
         }
@@ -48,7 +56,8 @@ Eigen::VectorXd surface_tension_gradient(
     const double m,
     const double fac,
     const double kappa,
-    const double threshold
+    const double threshold,
+    const bool smooth_mol
 ){
     int n = x.size() / dim;
 
@@ -69,12 +78,12 @@ Eigen::VectorXd surface_tension_gradient(
             B(dim*neighbors[i][j] + 1, i) += density_grad(3);
         }
     }
-
+    double mol_k = 200000000;
     // Now compute surface tension gradient
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
             double mol, mol_grad;
-
+/*
             if (densities(i) >  1.5 * threshold){
                 mol = 0;
                 mol_grad = 0;
@@ -88,12 +97,30 @@ Eigen::VectorXd surface_tension_gradient(
                 mol = 1;
                 mol_grad = 0;
             }
+*/
             
-            grad += kappa * ((B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol
-               + B.col(i) * mol_grad * (densities(i)-densities(j)) * (densities(i)-densities(j)) *0.5);
+            mol = 1/ (1 + exp(mol_k * (densities(i) - threshold)));
+            mol_grad = -mol_k * exp(mol_k * (densities(i) - threshold)) / ((1 + exp(mol_k * (densities(i) - threshold))) * (1 + exp(mol_k * (densities(i) - threshold))));
+            if (!smooth_mol){
+                mol = 1; 
+                mol_grad = 0;
+                if (densities(i) > threshold) {
+                    mol = 0;
+                    mol_grad = 0;
+                }
+            } 
+           grad += kappa * ((B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol);
+            //   + B.col(i) * mol_grad * (densities(i)-densities(j)) * (densities(i)-densities(j)) *0.5);
         }
     }
 
+    if (!smooth_mol){
+        for (int i = 0; i < n; i++){
+            if (densities(i) > threshold){
+                grad.segment<dim>(dim * i) = Eigen::VectorXd::Zero(dim);
+            }
+        }
+    }
     return grad;
 };
 
@@ -105,10 +132,11 @@ Eigen::MatrixXd surface_tension_hessian(
     const double m,
     const double fac,
     const double kappa,
-    const double threshold
+    const double threshold,
+    const double smooth_mol
 ){
     
-    Eigen::VectorXd grad = surface_tension_gradient<dim>(x, neighbors, h, m, fac, kappa, threshold);
+    Eigen::VectorXd grad = surface_tension_gradient<dim>(x, neighbors, h, m, fac, kappa, threshold, smooth_mol);
     if(kappa == 0){
         return grad * grad.transpose();
     }

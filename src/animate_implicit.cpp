@@ -36,6 +36,7 @@ void animate_implicit<2>(
     MatrixXd & X, 
     MatrixXd & V,
     VectorXd & J,
+    VectorXd & Jx,
     MatrixXi & N,
     Eigen::MatrixXd & grad_i,
     Eigen::MatrixXd & grad_psi,
@@ -55,7 +56,8 @@ void animate_implicit<2>(
     const bool fd_check,
     const bool bounds_bool,
     const bool converge_check,
-    const bool do_line_search
+    const bool do_line_search,
+    const bool smooth_mol
     ){
 
     std::ofstream output_file("output.txt", std::ios::app);
@@ -92,7 +94,8 @@ void animate_implicit<2>(
 
     // Vectors
     VectorXd b = VectorXd::Zero(2 * n);
-    VectorXd Jx = VectorXd::Zero(n);
+    //VectorXd 
+    Jx = VectorXd::Zero(n);
     VectorXd lambda = VectorXd::Zero(2 * n);
 
     // row-wise flatten function
@@ -205,14 +208,14 @@ void animate_implicit<2>(
 
         // Assemble left and right hand sides of system
         A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + H_spacing
-            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold).sparseView()
+            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView()
             + bounds_hessian<2>(x, low_bound, up_bound, bounds_bool).sparseView();
         VectorXd dpsi_dJ = psi_gradient<2>(x, J, neighbors, h, m, fac, kappa, rho_0 * st_threshold);
 
         VectorXd b_inertial = -M * (x - x_hat);
         VectorXd b_psi = B.transpose() * (V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(Jx - J));
         VectorXd b_spacing = -g_spacing;
-        VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold);
+        VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
         VectorXd b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, bounds_bool);
 
 
@@ -251,16 +254,16 @@ void animate_implicit<2>(
             //0.5 * kappa_dt_sqr * (J_new - VectorXd::Ones(n)).squaredNorm();
 
             // Mixed constraint energy
-            Jx = calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0;
+            // Jx = calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0;
 
-            double e_c = lambda.dot(J_new - Jx);
+            double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0));
             
             // Spacing energy
             double e_s = spacing_energy.eval(x_new);
 
             // Surface tension energy
             double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st_dt_sqr,
-                rho_0 * st_threshold);
+                rho_0 * st_threshold, smooth_mol);
 
             // Boundary energy
             double e_bound = bounds_energy<2>(x_new, low_bound, up_bound, bounds_bool);
@@ -336,6 +339,8 @@ void animate_implicit<2>(
     V = (X_new-X)/dt;
     X = X_new;
 
+    for (int i = 0; i < 16; i++) {std::cout<< "i = " << i << ", " << J(i) << " " << Jx(i) << std::endl;}
+
     //std::cout << X << std::endl;
     // boundary detection
     /*
@@ -362,6 +367,7 @@ void animate_implicit<3>(
     MatrixXd & X, 
     MatrixXd & V, 
     VectorXd & J,
+    VectorXd & Jx,
     MatrixXi & N,
     Eigen::MatrixXd & grad_i,
     Eigen::MatrixXd & grad_psi,
@@ -381,5 +387,6 @@ void animate_implicit<3>(
     const bool fd_check,
     const bool bounds,
     const bool converge_check,
-    const bool do_line_search
+    const bool do_line_search,
+    const bool smooth_mol
     ){}

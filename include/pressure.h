@@ -3,7 +3,7 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include "cubic_bspline.h"
-#include <iostream> // remove
+
 
 template <int dim>
 double psi_energy(
@@ -32,6 +32,7 @@ double psi_energy(
         else{
             mollifier = 0;
         }
+        mollifier = 1;
         e_psi += 0.5 * kappa * h * h * (J(i) - 1) * (J(i) - 1) * mollifier; 
     }
     
@@ -70,6 +71,7 @@ Eigen::VectorXd psi_gradient(
             else{
                 mollifier = 0;
         }
+        mollifier = 1;
         grad(i) *= mollifier;
     }
     return grad;

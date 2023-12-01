@@ -25,7 +25,7 @@ polyscope::PointCloud* psCloud;
 
 MatrixXd q0, q, q_dot;  // particle positions, velocities
 MatrixXi N;             // Per-particle neighbors
-VectorXd J;
+VectorXd J, Jx;
 MatrixXd grad_i, grad_psi, grad_c, grad_s, grad_st;
 
 int numofparticles; //number of particles
@@ -35,7 +35,7 @@ Vector2d lower_bound;
 Vector2d upper_bound;
 
 int iters = 10;
-double dt = 0.03;
+double dt = 1;
 double k_psi = 10;
 double k_s = 1;
 double k_st = 0.1;
@@ -51,6 +51,7 @@ void callback() {
   static bool converge_check = true;
   static bool do_line_search = false;
   static bool bounds = true;
+  static bool smooth_mol = false;
   static int frame = 0;
   static double gravity = 0.0;
 
@@ -73,6 +74,7 @@ void callback() {
   ImGui::Checkbox("Iterate until Convergence", &converge_check);
   ImGui::Checkbox("Do line search", &do_line_search);
   ImGui::Checkbox("Boundaries", &bounds);
+  ImGui::Checkbox("Smooth Surface Tension", &smooth_mol);
 
   ImGui::InputInt("solver max iterations", &iters);
   ImGui::InputDouble("k_psi", &k_psi);
@@ -92,11 +94,11 @@ void callback() {
     grad_s.setZero();
     grad_st.setZero();
 
-    animate_implicit<2>(q, q_dot, J, N, 
+    animate_implicit<2>(q, q_dot, J, Jx, N, 
       grad_i, grad_psi, grad_s, grad_st,
       lower_bound, upper_bound, numofparticles, iters, dt, 
       k_psi, k_st, k_s, st_threshold, rho_0, gravity,
-      fd_check, bounds, converge_check, do_line_search);
+      fd_check, bounds, converge_check, do_line_search, smooth_mol);
 
     psCloud->updatePointPositions2D(q);
     psCloud->addVectorQuantity("total gradient", grad_i + grad_psi + grad_s + grad_st, polyscope::VectorType::STANDARD);
@@ -107,7 +109,7 @@ void callback() {
     psCloud->addScalarQuantity("J", J)->setEnabled(true);
     
     VectorXd m = VectorXd::Ones(numofparticles);
-    m = J * rho_0;
+    m = Jx * rho_0;
     double threshold = st_threshold * rho_0;
     for (int i = 0; i < numofparticles; i++){
         double mollifier;
@@ -219,13 +221,13 @@ int main(int argc, char *argv[]){
   MatrixXd X = q.transpose();
   VectorXd x = Eigen::Map<VectorXd>(X.data(), X.size());
   std::vector<std::vector<int>> neighbors = find_neighbors_brute_force<2>(x, h);
-  J = calculate_densities<2>(x, neighbors, h, 1.0, fac) / rho_0;
-  
+  J = calculate_densities<2>(x, neighbors, h, 1.0, fac) / rho_0; 
   std::cout << "initializing J with h = " << h << " and rho_0 = " << rho_0 << std::endl;
   std::cout << "J first 20 " << J.head(20) << std::endl;
   std::cout << "Jx = " << J(5) << " " << J(16) << " " << J(24)  << std::endl;
   //std::cout << " J * rho: " << J.transpose() * rho_0 << std::endl;
-
+  Jx.resize(numofparticles);
+  Jx.setZero();
   // Create point cloud polyscope object
   psCloud = polyscope::registerPointCloud2D("particles", q);
   //psCloud->addVectorQuantity("velocity", q, polyscope::VectorType::STANDARD);
