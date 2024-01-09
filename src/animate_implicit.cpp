@@ -1,3 +1,4 @@
+#pragma once
 #include "animate_implicit.h"
 #include "calculate_lambda.h"
 #include "surface_tension.h"
@@ -57,14 +58,17 @@ void animate_implicit<2>(
     const bool bounds_bool,
     const bool converge_check,
     const bool do_line_search,
-    const bool smooth_mol
+    const bool smooth_mol,
+    const bool psi_bool,
+    const bool spacing_bool,
+    const bool st_bool
     ){
 
     std::ofstream output_file("output.txt", std::ios::app);
 
     const int n = numofparticles;
     const double m = 1;
-    const double h = 0.2; // h for particle distance
+    const double h = 0.3; // h for particle distance
     const double vol = 1;//m/rho_0;
     const double fac = 10/7/M_PI; // bspline normalizing coefficient
 
@@ -141,6 +145,7 @@ void animate_implicit<2>(
         // Create list of neighbor pairs (as elements for TinyAD)
         std::vector<Eigen::Vector2i> elements;
         for (int i = 0; i < n; i++){
+            if (neighbors[i].size() <= 7) std::cout << "i = " << i << ", neighbors = " << neighbors[i].size() << std::endl; 
             for (int j = 0; j < neighbors[i].size(); j++){
                 elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
             }
@@ -174,7 +179,7 @@ void animate_implicit<2>(
         //begin = std::chrono::high_resolution_clock::now();
 
         // Create spacing energy function and evaluate gradient and hessian
-        auto spacing_energy = spacing_energy_func<2>(x, elements, h, m, fac, W_dq, k_spacing);
+        auto spacing_energy = spacing_energy_func<2>(x, elements, 0.08, m, fac, W_dq, k_spacing);
         std::cout << "Evaluate gradient and hessian" << std::endl;
         auto [f, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
 
@@ -207,19 +212,47 @@ void animate_implicit<2>(
 
 
         // Assemble left and right hand sides of system
-        A = M + B.transpose() * (V_b_inv * H * V_b_inv) * B + H_spacing
-            + surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView()
-            + bounds_hessian<2>(x, low_bound, up_bound, bounds_bool).sparseView();
-        VectorXd dpsi_dJ = psi_gradient<2>(x, J, neighbors, h, m, fac, kappa, rho_0 * st_threshold);
 
+        A = M;
+        if (psi_bool) {
+            A += B.transpose() * V_b_inv * psi_hessian<2>(H) * V_b_inv * B;
+        }
+        if (spacing_bool) {
+            A += H_spacing;
+        }
+        if (st_bool) {
+            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView();
+        }
+        if (bounds_bool) {
+            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView();
+        }
+        
+        VectorXd dpsi_dJ = VectorXd::Zero(n);
         VectorXd b_inertial = -M * (x - x_hat);
-        VectorXd b_psi = B.transpose() * (V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(Jx - J));
-        VectorXd b_spacing = -g_spacing;
-        VectorXd b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
-        VectorXd b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, bounds_bool);
+        VectorXd b_psi = VectorXd::Zero(2 * n);
+        VectorXd b_spacing = VectorXd::Zero(2 * n);
+        VectorXd b_st = VectorXd::Zero(2 * n);
+        VectorXd b_bounds = VectorXd::Zero(2 * n);
 
-
-        b = b_inertial + dt * dt * (b_psi + b_spacing + b_st + b_bounds);
+        b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
+        if (psi_bool) {
+            dpsi_dJ = psi_gradient<2>(x, J, neighbors, h, m, fac, kappa, rho_0 * st_threshold);
+            // b_psi = B.transpose() * (-V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(J-Jx));
+            b_psi = -B.transpose() * (V_b_inv * dpsi_dJ);
+            b += b_psi;
+        }
+        if (spacing_bool) {
+            b_spacing = -g_spacing;
+            b += dt * dt * b_spacing;
+        }
+        if (st_bool) {
+            b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
+            b += dt * dt * b_st;
+        }
+        if (bounds_bool) {
+            b_bounds = -bounds_gradient<2>(x, low_bound, up_bound);
+            b += dt * dt * b_bounds;
+        }
 
         // Solve for descent direction
         solver.compute(A);
@@ -266,7 +299,7 @@ void animate_implicit<2>(
                 rho_0 * st_threshold, smooth_mol);
 
             // Boundary energy
-            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound, bounds_bool);
+            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound);
             
             return e_i + e_psi + e_c + e_s + e_st + e_bound;
         };
@@ -388,5 +421,8 @@ void animate_implicit<3>(
     const bool bounds,
     const bool converge_check,
     const bool do_line_search,
-    const bool smooth_mol
+    const bool smooth_mol,
+    const bool psi_bool,
+    const bool spacing_bool,
+    const bool st_bool
     ){}

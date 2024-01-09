@@ -38,7 +38,7 @@ double surface_tension_energy(
             if (!smooth_mol){
                 mollifier = 1;
                 if (densities(i) > threshold) {
-                    mollifier = 1;
+                    mollifier = 0;
                 }
             }
             energy += 0.5 * kappa * (densities(i) - densities(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mollifier;
@@ -114,13 +114,6 @@ Eigen::VectorXd surface_tension_gradient(
         }
     }
 
-    if (!smooth_mol){
-        for (int i = 0; i < n; i++){
-            if (densities(i) > threshold){
-                grad.segment<dim>(dim * i) = Eigen::VectorXd::Zero(dim);
-            }
-        }
-    }
     return grad;
 };
 

@@ -15,13 +15,8 @@ template <int dim>
 double bounds_energy(
     Eigen::VectorXd & x,
     const Eigen::Matrix<double, dim, 1> & lower_bound,
-    const Eigen::Matrix<double, dim, 1> & upper_bound,
-    const bool bounds
+    const Eigen::Matrix<double, dim, 1> & upper_bound
 ){
-    if (!bounds){
-        return 0.0;
-    }
-
     int n = x.size() / dim;
     Eigen::Vector2d e0, e1;
 
@@ -61,13 +56,8 @@ template <int dim>
 Eigen::VectorXd bounds_gradient(
     Eigen::VectorXd & x,
     const Eigen::Matrix<double, dim, 1> & lower_bound,
-    const Eigen::Matrix<double, dim, 1> & upper_bound,
-    const bool bounds
+    const Eigen::Matrix<double, dim, 1> & upper_bound
 ){
-    if (!bounds){
-        return Eigen::VectorXd::Zero(x.size());
-    }
-
     int n = x.size() / dim;
     Eigen::Vector2d e0, e1;
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(x.size());
@@ -107,13 +97,8 @@ template <int dim>
 Eigen::MatrixXd bounds_hessian(
     Eigen::VectorXd & x,
     const Eigen::Matrix<double, dim, 1> & lower_bound,
-    const Eigen::Matrix<double, dim, 1> & upper_bound,
-    const bool bounds
+    const Eigen::Matrix<double, dim, 1> & upper_bound
 ){
-    if (!bounds){
-        return Eigen::MatrixXd::Zero(x.size(), x.size());
-    }
-
     int n = x.size() / dim;
     Eigen::Vector2d e0, e1;
     Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(x.size(), x.size());
