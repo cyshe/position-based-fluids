@@ -32,7 +32,8 @@ void animate_implicit(
     const bool smooth_mol = false,
     const bool psi_bool = true,
     const bool spacing_bool = true,
-    const bool st_bool = true
+    const bool st_bool = true,
+    const bool primal = true
 );
 
 // Computes derivative of norm of a vector

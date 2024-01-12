@@ -61,7 +61,8 @@ void animate_implicit<2>(
     const bool smooth_mol,
     const bool psi_bool,
     const bool spacing_bool,
-    const bool st_bool
+    const bool st_bool,
+    const bool primal
     ){
 
     std::ofstream output_file("output.txt", std::ios::app);
@@ -145,7 +146,7 @@ void animate_implicit<2>(
         // Create list of neighbor pairs (as elements for TinyAD)
         std::vector<Eigen::Vector2i> elements;
         for (int i = 0; i < n; i++){
-            if (neighbors[i].size() <= 7) std::cout << "i = " << i << ", neighbors = " << neighbors[i].size() << std::endl; 
+            //if (neighbors[i].size() <= 7) std::cout << "i = " << i << ", neighbors = " << neighbors[i].size() << std::endl; 
             for (int j = 0; j < neighbors[i].size(); j++){
                 elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
             }
@@ -212,10 +213,10 @@ void animate_implicit<2>(
 
 
         // Assemble left and right hand sides of system
-
+        
         A = M;
         if (psi_bool) {
-            A += B.transpose() * V_b_inv * psi_hessian<2>(H) * V_b_inv * B;
+            A += psi_hessian<2>(H, B, V_b_inv, primal);
         }
         if (spacing_bool) {
             A += H_spacing;
@@ -233,12 +234,10 @@ void animate_implicit<2>(
         VectorXd b_spacing = VectorXd::Zero(2 * n);
         VectorXd b_st = VectorXd::Zero(2 * n);
         VectorXd b_bounds = VectorXd::Zero(2 * n);
-
+        
         b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
         if (psi_bool) {
-            dpsi_dJ = psi_gradient<2>(x, J, neighbors, h, m, fac, kappa, rho_0 * st_threshold);
-            // b_psi = B.transpose() * (-V_b_inv * dpsi_dJ + V_b_inv*H*V_b_inv*(J-Jx));
-            b_psi = -B.transpose() * (V_b_inv * dpsi_dJ);
+            b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, primal);
             b += b_psi;
         }
         if (spacing_bool) {
@@ -424,5 +423,6 @@ void animate_implicit<3>(
     const bool smooth_mol,
     const bool psi_bool,
     const bool spacing_bool,
-    const bool st_bool
+    const bool st_bool,
+    const bool primal
     ){}

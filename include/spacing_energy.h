@@ -13,8 +13,8 @@ auto spacing_energy_func(
     const double m,
     const double fac,
     const double W_dq,
-    const double kappa)
-{
+    const double kappa
+){
 
     int n = x.size() / dim;
     auto func = TinyAD::scalar_function<dim>(TinyAD::range(n));

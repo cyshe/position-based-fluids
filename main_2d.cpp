@@ -1,3 +1,4 @@
+#pragma once
 #include "animate_sph.h"
 #include "animate_fluids.h"
 #include "animate_implicit.h"
@@ -52,6 +53,11 @@ void callback() {
   static bool do_line_search = false;
   static bool bounds = true;
   static bool smooth_mol = false;
+  static bool psi_bool = true;
+  static bool spacing_bool = true;
+  static bool st_bool = true;
+  static bool primal = true;
+
   static int frame = 0;
   static double gravity = 0.0;
 
@@ -75,6 +81,10 @@ void callback() {
   ImGui::Checkbox("Do line search", &do_line_search);
   ImGui::Checkbox("Boundaries", &bounds);
   ImGui::Checkbox("Smooth Surface Tension", &smooth_mol);
+  ImGui::Checkbox("psi", &psi_bool);
+  ImGui::Checkbox("spacing", &spacing_bool);
+  ImGui::Checkbox("surface tension", &st_bool);
+  ImGui::Checkbox("primal", &primal);
 
   ImGui::InputInt("solver max iterations", &iters);
   ImGui::InputDouble("k_psi", &k_psi);
@@ -98,13 +108,13 @@ void callback() {
       grad_i, grad_psi, grad_s, grad_st,
       lower_bound, upper_bound, numofparticles, iters, dt, 
       k_psi, k_st, k_s, st_threshold, rho_0, gravity,
-      fd_check, bounds, converge_check, do_line_search, smooth_mol);
+      fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal);
 
     psCloud->updatePointPositions2D(q);
     psCloud->addVectorQuantity("total gradient", grad_i + grad_psi + grad_s + grad_st, polyscope::VectorType::STANDARD);
     psCloud->addVectorQuantity("inertia grad", grad_i, polyscope::VectorType::STANDARD);
     psCloud->addVectorQuantity("psi grad", grad_psi, polyscope::VectorType::STANDARD);
-    psCloud->addVectorQuantity("spacing grad", grad_s, polyscope::VectorType::STANDARD);
+    psCloud->addVectorQuantity("spacing grad", grad_s, polyscope::VectorType::STANDARD)->setEnabled(true);
     psCloud->addVectorQuantity("surface tension grad", grad_st, polyscope::VectorType::STANDARD)->setEnabled(true);
     psCloud->addScalarQuantity("J", J)->setEnabled(true);
     
