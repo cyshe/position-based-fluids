@@ -37,9 +37,9 @@ Vector2d upper_bound;
 
 int iters = 10;
 double dt = 1;
-double k_psi = 10;
-double k_s = 1;
-double k_st = 0.1;
+double k_psi = 1;
+double k_s = 10;
+double k_st = 10;
 double st_threshold = 1.0;
 double rho_0 = 2.0;
 double h = 0.2;
@@ -107,7 +107,7 @@ void callback() {
     animate_implicit<2>(q, q_dot, J, Jx, N, 
       grad_i, grad_psi, grad_s, grad_st,
       lower_bound, upper_bound, numofparticles, iters, dt, 
-      k_psi, k_st, k_s, st_threshold, rho_0, gravity,
+      k_psi, k_st, k_s, st_threshold, rho_0, gravity,\
       fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal);
 
     psCloud->updatePointPositions2D(q);

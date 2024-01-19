@@ -48,12 +48,13 @@ double psi_energy(
     const double m,
     const double fac,
     const double kappa,
-    const double threshold
+    const double threshold,
+    const double rho_0
 ){
     int n = x.size()/dim;
     double e_psi = 0;
     
-    Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
+    Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac)/rho_0;
 
     for (int i = 0; i < n; i++){
         double mollifier = mollifier_psi(densities(i), threshold);
@@ -76,12 +77,13 @@ Eigen::VectorXd psi_gradient(
     const double fac,
     const double kappa,
     const double threshold,
+    const double rho_0,
     const bool primal
 ){
     int n = J.size();
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(x.size());
     
-    Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
+    Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac)/rho_0;
     VectorXd dpsi = Eigen::VectorXd::Zero(x.size());
 
     if (primal){
@@ -96,10 +98,12 @@ Eigen::VectorXd psi_gradient(
     double mol = 0;
     for (int i = 0; i < n; i++){
         double mollifier = mollifier_psi(densities(i), threshold); 
-        double mol_deriv = molli_deriv_psi(densities(i), threshold);
+        VectorXd mol_deriv = molli_deriv_psi(densities(i), threshold) * -B.col(i) * rho_0;
+
         for (int d = 0; d < dim; d++){
-            grad(i * dim + d) = mollifier  * dpsi(i * dim + d); //+ mol_deriv * 0.5 * kappa * h * h * (densities(i) - 1) * (densities(i) - 1);
+            grad(i * dim + d) += mollifier * dpsi(i * dim + d);
         }
+        grad += mol_deriv * 0.5 * kappa * h * h * (densities(i) - 1) * (densities(i) - 1);
     }
     return grad;
 };
