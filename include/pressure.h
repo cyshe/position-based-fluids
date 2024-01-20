@@ -57,7 +57,7 @@ double psi_energy(
     Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac)/rho_0;
 
     for (int i = 0; i < n; i++){
-        double mollifier = mollifier_psi(densities(i), threshold);
+        double mollifier = mollifier_psi(densities(i) * rho_0, threshold);
         e_psi += 0.5 * kappa * h * h * (densities(i) - 1) * (densities(i) - 1) * mollifier; 
     }
     
@@ -97,8 +97,8 @@ Eigen::VectorXd psi_gradient(
     // multiply by mollifier
     double mol = 0;
     for (int i = 0; i < n; i++){
-        double mollifier = mollifier_psi(densities(i), threshold); 
-        VectorXd mol_deriv = molli_deriv_psi(densities(i), threshold) * -B.col(i) * rho_0;
+        double mollifier = mollifier_psi(densities(i)*rho_0, threshold); 
+        VectorXd mol_deriv = molli_deriv_psi(densities(i)*rho_0, threshold) * -B.row(i) * rho_0;
 
         for (int d = 0; d < dim; d++){
             grad(i * dim + d) += mollifier * dpsi(i * dim + d);

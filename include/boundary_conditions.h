@@ -45,7 +45,7 @@ double bounds_energy(
             }
 
             d = ipc::point_edge_distance(point, e0, e1);
-            energy += ipc::barrier(d, 0.05);
+            energy += ipc::barrier(d, 0.2);
         }
     }
     return energy;
@@ -86,7 +86,7 @@ Eigen::VectorXd bounds_gradient(
         
             d = ipc::point_edge_distance(point, e0, e1);
             grad.segment<dim>(dim * i) += ipc::point_edge_distance_gradient(point, e0, e1).segment<dim>(0) * 
-                ipc::barrier_gradient(d, 0.05);
+                ipc::barrier_gradient(d, 0.2);
         }
     }
 

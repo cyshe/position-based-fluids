@@ -237,7 +237,7 @@ void animate_implicit<2>(
         
         b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
         if (psi_bool) {
-            b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, primal);
+            b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
             b += b_psi;
         }
         if (spacing_bool) {
@@ -282,7 +282,7 @@ void animate_implicit<2>(
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
             
             // Mixed potential energy
-            double e_psi = psi_energy<2>(x_new, J_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold);
+            double e_psi = psi_energy<2>(x_new, J_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
             //0.5 * kappa_dt_sqr * (J_new - VectorXd::Ones(n)).squaredNorm();
 
             // Mixed constraint energy
