@@ -40,8 +40,8 @@ double dt = 1;
 double k_psi = 1;
 double k_s = 10;
 double k_st = 10;
-double st_threshold = 1.0;
-double rho_0 = 2.0;
+double st_threshold = 2.0;
+double rho_0 = 3.0;
 double h = 0.2;
 double fac = 10/7/M_PI;
 
@@ -121,6 +121,7 @@ void callback() {
     VectorXd m = VectorXd::Ones(numofparticles);
     m = Jx * rho_0;
     double threshold = st_threshold * rho_0;
+    // TODO: use mollifier function
     for (int i = 0; i < numofparticles; i++){
         double mollifier; 
         if (m(i) >  1.5 * threshold){
@@ -151,7 +152,7 @@ void callback() {
     q_dot.setZero();
     psCloud->updatePointPositions2D(q);
     frame = 0;
-
+  //TODO : change kernel radius of J make it the same as animateimplicit
     MatrixXd X = q.transpose();
     VectorXd x = Eigen::Map<VectorXd>(X.data(), X.size());
     std::vector<std::vector<int>> neighbors = find_neighbors_brute_force<2>(x, h);

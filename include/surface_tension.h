@@ -79,7 +79,7 @@ Eigen::VectorXd surface_tension_gradient(
             B(dim*neighbors[i][j] + 1, i) += density_grad(3);
         }
     }
-    double mol_k = 200000000;
+    double mol_k = 200;
     // Now compute surface tension gradient
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){

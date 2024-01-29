@@ -264,8 +264,7 @@ void animate_implicit<2>(
         lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
                - V_b_inv * kappa_dt_sqr * (J - VectorXd::Ones(n));
         
-        // TODO: There's definitely a bug here, dpsi/dJ was not caluclated
-        VectorXd delta_J = -H_inv * (dpsi_dJ + V_b * lambda);
+        VectorXd delta_J = -H_inv * (kappa_dt_sqr * (J - VectorXd::Ones(n)) + V_b * lambda);
 
         //end = std::chrono::high_resolution_clock::now();
         //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);

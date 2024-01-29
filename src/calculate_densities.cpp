@@ -46,7 +46,9 @@ Eigen::VectorXd calculate_densities(
             double r = (xj - xi).norm()/h;
             densities(i) += cubic_bspline(r, m*fac);
         }
+        densities(i) += m * fac;
     }
+    
     return densities;
 };
 
