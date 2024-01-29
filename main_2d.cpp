@@ -122,17 +122,17 @@ void callback() {
     m = Jx * rho_0;
     double threshold = st_threshold * rho_0;
     for (int i = 0; i < numofparticles; i++){
-        double mollifier;
+        double mollifier; 
         if (m(i) >  1.5 * threshold){
-                mollifier = 0;
-            }
-        else if (m(i) > 0.75 * threshold) {
-          double x_div_eps = -(m(i) - 1.5 *threshold) / ((1.5 - 0.75) * threshold);
-                mollifier =  (2 - x_div_eps) * x_div_eps;
-        }
-        else{
             mollifier = 1;
         }
+        else if (m(i) > 0.75 * threshold) {
+            mollifier =  - 16 * m(i) * m(i)/(9 * threshold * threshold) + 16 * m(i)/ (3 * threshold) - 3;
+        }
+        else{
+            mollifier = 0;
+        }
+        mollifier =  1/ (1 + exp(200 * (m(i) - threshold)));
         m(i) = mollifier;
     }
     

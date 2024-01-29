@@ -20,7 +20,7 @@ double surface_tension_energy(
     Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
 
     double energy = 0.0;
-    double mol_k = 200000000;
+    double mol_k = 200; // kappa in smooth mollifier exponential 
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
             double mollifier;/*
@@ -34,6 +34,7 @@ double surface_tension_energy(
             else{
                 mollifier = 1;
             }*/
+            // TODO: change this to have better boundary location. It always evaluates to 0 right now
             mollifier = 1/ (1 + exp(mol_k * (densities(i) - threshold)));
             if (!smooth_mol){
                 mollifier = 1;

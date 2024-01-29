@@ -175,7 +175,7 @@ void animate_implicit<2>(
     
 
         //auto end = std::chrono::high_resolution_clock::now();
-        //auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+         //auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
         //printf("Time measured 1: %.3f seconds.\n", elapsed.count() * 1e-9);
         //begin = std::chrono::high_resolution_clock::now();
 
@@ -235,6 +235,7 @@ void animate_implicit<2>(
         VectorXd b_st = VectorXd::Zero(2 * n);
         VectorXd b_bounds = VectorXd::Zero(2 * n);
         
+        // TODO: check as rho_0 * st_thershold is valid boundary condition for both psi and st
         b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
@@ -262,6 +263,8 @@ void animate_implicit<2>(
         VectorXd delta_x = solver.solve(b);
         lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
                - V_b_inv * kappa_dt_sqr * (J - VectorXd::Ones(n));
+        
+        // TODO: There's definitely a bug here, dpsi/dJ was not caluclated
         VectorXd delta_J = -H_inv * (dpsi_dJ + V_b * lambda);
 
         //end = std::chrono::high_resolution_clock::now();
