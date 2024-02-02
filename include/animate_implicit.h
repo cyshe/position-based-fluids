@@ -22,6 +22,7 @@ void animate_implicit(
     const double kappa,
     const double k_st,
     const double k_s,
+    const double h,
     const double st_threshold,
     const double rho_0,
     const double gravity,

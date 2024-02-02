@@ -41,7 +41,7 @@ double k_psi = 1;
 double k_s = 10;
 double k_st = 10;
 double st_threshold = 2.0;
-double rho_0 = 3.0;
+double rho_0 = 3.6;
 double h = 0.2;
 double fac = 10/7/M_PI;
 
@@ -107,7 +107,7 @@ void callback() {
     animate_implicit<2>(q, q_dot, J, Jx, N, 
       grad_i, grad_psi, grad_s, grad_st,
       lower_bound, upper_bound, numofparticles, iters, dt, 
-      k_psi, k_st, k_s, st_threshold, rho_0, gravity,\
+      k_psi, k_st, k_s, h, st_threshold, rho_0, gravity,\
       fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal);
 
     psCloud->updatePointPositions2D(q);
@@ -152,11 +152,12 @@ void callback() {
     q_dot.setZero();
     psCloud->updatePointPositions2D(q);
     frame = 0;
-  //TODO : change kernel radius of J make it the same as animateimplicit
     MatrixXd X = q.transpose();
     VectorXd x = Eigen::Map<VectorXd>(X.data(), X.size());
     std::vector<std::vector<int>> neighbors = find_neighbors_brute_force<2>(x, h);
-    J = calculate_densities<2>(x, neighbors, h, 1.0, fac) / rho_0;
+    J = calculate_densities<2>(x, neighbors, h, 1.0, fac);
+    rho_0 = J.mean();
+    J = J / rho_0;
     psCloud->addScalarQuantity("J", J)->setEnabled(true);
 
   }
@@ -232,7 +233,9 @@ int main(int argc, char *argv[]){
   MatrixXd X = q.transpose();
   VectorXd x = Eigen::Map<VectorXd>(X.data(), X.size());
   std::vector<std::vector<int>> neighbors = find_neighbors_brute_force<2>(x, h);
-  J = calculate_densities<2>(x, neighbors, h, 1.0, fac) / rho_0; 
+  J = calculate_densities<2>(x, neighbors, h, 1.0, fac);
+  rho_0 = J.mean();
+  J = J / rho_0; 
   std::cout << "initializing J with h = " << h << " and rho_0 = " << rho_0 << std::endl;
   std::cout << "J first 20 " << J.head(20) << std::endl;
   std::cout << "Jx = " << J(5) << " " << J(16) << " " << J(24)  << std::endl;

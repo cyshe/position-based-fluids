@@ -51,6 +51,7 @@ void animate_implicit<2>(
     const double kappa,
     const double k_st,
     const double k_s,
+    const double h, //kernel radius for calculating density
     const double st_threshold,
     const double rho_0,
     const double gravity,
@@ -69,7 +70,6 @@ void animate_implicit<2>(
 
     const int n = numofparticles;
     const double m = 1;
-    const double h = 0.3; // h for particle distance
     const double vol = 1;//m/rho_0;
     const double fac = 10/7/M_PI; // bspline normalizing coefficient
 
@@ -415,6 +415,7 @@ void animate_implicit<3>(
     const double kappa,
     const double k_st,
     const double k_s,
+    const double h,
     const double st_threshold,
     const double rho_0,
     const double gravity,

@@ -34,7 +34,6 @@ double surface_tension_energy(
             else{
                 mollifier = 1;
             }*/
-            // TODO: change this to have better boundary location. It always evaluates to 0 right now
             mollifier = 1/ (1 + exp(mol_k * (densities(i) - threshold)));
             if (!smooth_mol){
                 mollifier = 1;
