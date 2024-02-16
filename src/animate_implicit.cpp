@@ -1,8 +1,4 @@
 #pragma once
-#include "animate_implicit.h"
-#include "calculate_lambda.h"
-#include "surface_tension.h"
-#include "boundary_conditions.h"
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -11,17 +7,22 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <vector>
 #include "TinyAD/Scalar.hh"
 #include "TinyAD/ScalarFunction.hh"
 #include "TinyAD/VectorFunction.hh"
 
+#include "animate_implicit.h"
+#include "calculate_lambda.h"
+#include "surface_tension.h"
+#include "boundary_conditions.h"
 #include "spacing_energy.h"
 #include "pressure.h"
+#include "find_neighbors_compact.h"
 #include "find_neighbors_brute_force.h"
 #include "calculate_densities.h"
 #include "cubic_bspline.h"
-
-//#include "CompactNSearch"
+#include "line_search.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -235,7 +236,6 @@ void animate_implicit<2>(
         VectorXd b_st = VectorXd::Zero(2 * n);
         VectorXd b_bounds = VectorXd::Zero(2 * n);
         
-        // TODO: check as rho_0 * st_thershold is valid boundary condition for both psi and st
         b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
@@ -358,7 +358,7 @@ void animate_implicit<2>(
             grad_st(i, 1) = b_st(2*i+1);
         }
 
-        double residual = delta_x.norm() / n / dt;
+        double residual = delta_x.lpNorm<Eigen::Infinity>() / dt;
         std::cout << "iteration: " << it << ", residual: " << residual << std::endl;
 
         if (residual < 2e-3 && converge_check) {

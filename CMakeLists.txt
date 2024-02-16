@@ -14,7 +14,6 @@ endif()
 #include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include)
-#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/CompactNSearch/include)
 
 #include source code
 file(GLOB H_FILES ${PROJECT_SOURCE_DIR}/include/*.h)
@@ -47,8 +46,7 @@ message(${ipc_toolkit_SOURCE_DIR}/src)
 
 # Polyscope 
 add_subdirectory("deps/polyscope")
-
-#add_subdirectory("deps/CompactNSearch")
+add_subdirectory("deps/CompactNSearch")
 
 #build executable 
 add_executable(${PROJECT_NAME} main.cpp ${CPP_FILES})
@@ -57,12 +55,12 @@ target_link_libraries(${PROJECT_NAME} PUBLIC finitediff::finitediff)
 #target_link_libraries(${PROJECT_NAME} PUBLIC ipc::toolkit)
 
 add_executable(main_2d main_2d.cpp ${CPP_FILES})
-target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)# CompactNSearch)
+target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)
 target_link_libraries(main_2d PUBLIC finitediff::finitediff)
 target_link_libraries(main_2d PUBLIC ipc::toolkit)
+target_link_libraries(main_2d PUBLIC CompactNSearch)
 
 add_executable(smoke_sim smoke_sim.cpp ${CPP_FILES})
 target_link_libraries(smoke_sim PUBLIC polyscope Eigen3::Eigen)# CompactNSearch)
 target_link_libraries(smoke_sim PUBLIC finitediff::finitediff)
-target_link_libraries(smoke_sim PUBLIC polyscope Eigen3::Eigen)
 #target_link_libraries(smoke_sim PUBLIC ipc::toolkit)
