@@ -6,7 +6,6 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
-#include <chrono>
 #include <vector>
 #include "TinyAD/Scalar.hh"
 #include "TinyAD/ScalarFunction.hh"
@@ -218,10 +217,13 @@ void animate_lbfgs<2>(
         b += dt * dt * b_bounds;
     }
     VectorXd q = -b;
-    double rho = VectorXd::Zero(iters);
+    VectorXd rho = VectorXd::Zero(iters);
+    VectorXd s = VectorXd::Zero(2 * n);
+    VectorXd t = VectorXd::Zero(2 * n);
+    double sigma = 0.0;
     for (int it = 0; it < iters; it++){
-        VectorXd s = VectorXd::Zero(2 * n);
-        VectorXd t = VectorXd::Zero(2 * n);
+        s.setZero();
+        t.setZero();        
         double sigma = 0;
 
         if (it == 0){
@@ -253,9 +255,13 @@ void animate_lbfgs<2>(
             A += bounds_hessian<2>(x, low_bound, up_bound).sparseView();
         }
     }
-
-
-    VectorXd delta_x = A.inverse()*q;
+    SimplicialLDLT<SparseMatrix<double>> solver;
+    solver.compute(A);
+    if (solver.info() != Success) {
+        std::cout << "decomposition failed" << std::endl;
+        exit(1);
+    }
+    VectorXd delta_x = solver.solve(q);
 
     for (int it = 5; it < iters; it++) {;
         s = prev_Xs.col(it-1) - prev_Xs.col(it);
@@ -320,30 +326,19 @@ void animate_lbfgs<2>(
             e_new = energy_func(alpha);
         }
         std::cout << "!!!alpha: " << alpha << std::endl;
-        if (alpha < 1e-10 && it == 0){
-            std::cout << "line search failed" << std::endl;
-            SelfAdjointEigenSolver<MatrixXd> es;
-            es.compute(MatrixXd(A));
-            std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
-            //std::cout << delta_X << std::endl;
-            //exit(1);
-        }
-        
+        //if (alpha < 1e-10 && it == 0){
+        //    std::cout << "line search failed" << std::endl;
+        //    SelfAdjointEigenSolver<MatrixXd> es;
+        //    es.compute(MatrixXd(A));
+        //    std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
+        //    //std::cout << delta_X << std::endl;
+        //    //exit(1);
+        //}
+        //
         x += alpha * delta_x;
         J += alpha * delta_J;
 
-        //end = std::chrono::high_resolution_clock::now();
-        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-        //printf("Time measured 5: %.3f seconds.\n", elapsed.count() * 1e-9);
 
-        
-        output_file << (M * (x - x_hat) ).norm()<< ", " 
-        << g_spacing.norm() << ", " 
-        << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << ", "
-        << (B.transpose()* (V_b_inv*H*V_b_inv*(J-Jx))).norm() << ", "
-        << lambda.norm() << ", "
-        << (alpha * delta_J).norm() << ", "
-        << (alpha * delta_x).norm() << std::endl;
 
         // Write gradients for visualization
         for (int i = 0; i < n; i++) {
@@ -361,11 +356,10 @@ void animate_lbfgs<2>(
         }
 
         double residual = delta_x.lpNorm<Eigen::Infinity>() / dt;
-        std::cout << "iteration: " << it << ", residual: " << residual << std::endl;
+        //std::cout << "iteration: " << it << ", residual: " << residual << std::endl;
 
         if (residual < 2e-3 && converge_check) {
             std::cout << "converged" << std::endl;
-            break;
         }
     }        
 
@@ -376,8 +370,12 @@ void animate_lbfgs<2>(
     X = X_new;
 
     // update previous gradient and previous position
-    prev_Xs =
-    prev_grads = 
+    for (int i = 0; i < iters-1; i++){
+        prev_Xs.col(i) = prev_Xs.col(i+1);
+        prev_grads.col(i) = prev_grads.col(i+1);
+    }
+    prev_grads.col(0) = b;
+    prev_Xs.col(0) = x;
 
     return;
 }
