@@ -189,7 +189,7 @@ void animate_lbfgs<2>(
 
     // Create spacing energy function and evaluate gradient and hessian
     auto spacing_energy = spacing_energy_func<2>(x, elements, 0.08, m, fac, W_dq, k_spacing);
-    std::cout << "Evaluate gradient and hessian" << std::endl;
+    std::cout << "Evaluate gradient and hessian spacing" << std::endl;
     auto [f, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
 
 
@@ -199,6 +199,7 @@ void animate_lbfgs<2>(
     VectorXd b_st = VectorXd::Zero(2 * n);
     VectorXd b_bounds = VectorXd::Zero(2 * n);
     
+    std::cout << "Calculate gradient" << std::endl;
     b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
     if (psi_bool) {
         b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
@@ -216,6 +217,7 @@ void animate_lbfgs<2>(
         b_bounds = -bounds_gradient<2>(x, low_bound, up_bound);
         b += dt * dt * b_bounds;
     }
+
     VectorXd q = -b;
     VectorXd rho = VectorXd::Zero(iters);
     VectorXd s = VectorXd::Zero(2 * n);
@@ -225,7 +227,6 @@ void animate_lbfgs<2>(
         s.setZero();
         t.setZero();        
         double sigma = 0;
-
         if (it == 0){
             s = x - prev_Xs.col(it);
             t = b - prev_grads.col(it);
@@ -234,12 +235,13 @@ void animate_lbfgs<2>(
             s = prev_Xs.col(it-1) - prev_Xs.col(it);
             t = prev_grads.col(it-1) - prev_grads.col(it);
         }
+        if (rho(it) < 1e-10) continue;
         rho(it) = (t.transpose() * s).trace();
-        sigma = (s.transpose() * q).trace() / rho(it);
-
+        sigma = (s.transpose() * q).trace() / (rho(it) + 1);
         q = q - sigma * t;
     }
 
+    
     if (reset_A){
         A = M;
         if (psi_bool) {
@@ -263,16 +265,19 @@ void animate_lbfgs<2>(
     }
     VectorXd delta_x = solver.solve(q);
 
-    for (int it = 5; it < iters; it++) {;
+    for (int it = iters-1; it > -1; it--) {;
         s = prev_Xs.col(it-1) - prev_Xs.col(it);
         t = prev_grads.col(it-1) - prev_grads.col(it);
+
+        if (rho(it) < 1e-10) continue;
+
         double eta = (t.transpose() * delta_x).trace() / rho(it);
-        delta_x = delta_x - (sigma - eta) * s;
+        delta_x = delta_x + (sigma - eta) * s;
 
     } 
+    std::cout << "delta_x: " << delta_x.norm() << std::endl;
     
     // update prev_x and prev_grad list
-
     lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
            - V_b_inv * kappa_dt_sqr * (J - VectorXd::Ones(n));
         
@@ -362,7 +367,10 @@ void animate_lbfgs<2>(
             std::cout << "converged" << std::endl;
         }
     }        
-
+    double residual = delta_x.lpNorm<Eigen::Infinity>() / dt;
+    std::cout << "residual: " << residual << std::endl;
+    x += alpha * delta_x;
+    J += alpha * delta_J;
     // Turn x back into a field
     MatrixXd X_new = Eigen::Map<MatrixXd>(x.data(), 2, n).transpose();
 
@@ -370,9 +378,9 @@ void animate_lbfgs<2>(
     X = X_new;
 
     // update previous gradient and previous position
-    for (int i = 0; i < iters-1; i++){
-        prev_Xs.col(i) = prev_Xs.col(i+1);
-        prev_grads.col(i) = prev_grads.col(i+1);
+    for (int i = 1; i < iters; i++){
+        prev_Xs.col(i) = prev_Xs.col(i-1);
+        prev_grads.col(i) = prev_grads.col(i-1);
     }
     prev_grads.col(0) = b;
     prev_Xs.col(0) = x;

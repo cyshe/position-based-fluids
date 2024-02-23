@@ -13,11 +13,13 @@
 #include <Eigen/Sparse>
 #include <sstream>
 #include <cmath>
+#include <deque>
 #include <igl/grid.h>
 #include "ipc/ipc.hpp"
 #include "cubic_bspline.h"
 #include "calculate_densities.h"
 #include "find_neighbors_brute_force.h"
+
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -109,18 +111,18 @@ void callback() {
     grad_s.setZero();
     grad_st.setZero();
 
-    //animate_implicit<2>(q, q_dot, J, Jx, N, 
-    //  grad_i, grad_psi, grad_s, grad_st,
-    //  lower_bound, upper_bound, numofparticles, iters, dt, 
-    //  k_psi, k_st, k_s, h, st_threshold, rho_0, gravity,
-    //  fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal);
-    resetA = (frame % 10 == 0);
-
-    animate_lbfgs<2>(q, q_dot, J, Jx, N, prev_Xs, prev_grads,
-      grad_i, grad_psi, grad_s, grad_st, A,
+    animate_implicit<2>(q, q_dot, J, Jx, N, 
+      grad_i, grad_psi, grad_s, grad_st,
       lower_bound, upper_bound, numofparticles, iters, dt, 
       k_psi, k_st, k_s, h, st_threshold, rho_0, gravity,
-      fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal, resetA);
+      fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal);
+    resetA = (frame % 10 == 0);
+
+    //animate_lbfgs<2>(q, q_dot, J, Jx, N, prev_Xs, prev_grads,
+    //  grad_i, grad_psi, grad_s, grad_st, A,
+    //  lower_bound, upper_bound, numofparticles, iters, dt, 
+    //  k_psi, k_st, k_s, h, st_threshold, rho_0, gravity,
+    //  fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal, resetA);
 
     psCloud->updatePointPositions2D(q);
     psCloud->addVectorQuantity("total gradient", grad_i + grad_psi + grad_s + grad_st, polyscope::VectorType::STANDARD);
@@ -162,6 +164,7 @@ void callback() {
   if (ImGui::Button("Reset")) {
     q = q0;
     q_dot.setZero();
+    prev_Xs.setZero();  prev_grads.setZero();
     psCloud->updatePointPositions2D(q);
     frame = 0;
     MatrixXd X = q.transpose();
@@ -228,6 +231,12 @@ int main(int argc, char *argv[]){
   q_dot.resize(numofparticles, 2);
   q_dot.setZero();
 
+  prev_Xs.resize(numofparticles * 2, 10);
+  prev_grads.resize(numofparticles * 2, 10);
+
+  prev_Xs.setZero();
+  prev_grads.setZero();
+
   // initialize gradients
   grad_i.resize(numofparticles, 3);
   grad_psi.resize(numofparticles, 3);
@@ -257,15 +266,7 @@ int main(int argc, char *argv[]){
   Jx.resize(numofparticles);
   Jx.setZero();
   // Create point cloud polyscope object
-  MatrixXd prev_Xs = MatrixXd::Zero(numofparticles * 2, 10);
-  MatrixXd prev_grads = MatrixXd::Zero(numofparticles * 2, 10);
-
-  for (int i = 0; i < numofparticles; i++){
-    prev_Xs.row(i) = q.row(i);
-  }
   
-  std::cout << q.row(0) << std::endl;
-  std::cout << prev_Xs.row(0) << std::endl;
 
   psCloud = polyscope::registerPointCloud2D("particles", q);
   //psCloud->addVectorQuantity("velocity", q, polyscope::VectorType::STANDARD);

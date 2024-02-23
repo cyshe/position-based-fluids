@@ -142,7 +142,7 @@ void animate_implicit<2>(
         //auto begin = std::chrono::high_resolution_clock::now();
 
         // Initialize new neighbor list
-        std::vector<std::vector<int>> neighbors = find_neighbors_brute_force<2>(x, h);
+        std::vector<std::vector<int>> neighbors = find_neighbors_compact<2>(x, h);
 
         // Create list of neighbor pairs (as elements for TinyAD)
         std::vector<Eigen::Vector2i> elements;

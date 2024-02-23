@@ -13,7 +13,7 @@ std::vector<std::vector<int>> find_neighbors_compact<2>(
     const double h){
     int DIM = 2;
 
-    NeighborhoodSearch nsearch(float(h));
+    NeighborhoodSearch nsearch(h);
     int numofparticles = x.rows()/DIM;
     Eigen::VectorXd x_new = x;
     Eigen::MatrixXd x_3d;
@@ -42,7 +42,7 @@ std::vector<std::vector<int>> find_neighbors_compact<2>(
         point_set_1.push_back(point);
     }
 
-    unsigned int point_set_id = nsearch.add_point_set(point_set_1.front().data(), numofparticles);
+    unsigned int point_set_id = nsearch.add_point_set(  point_set_1.front().data(), numofparticles);
     nsearch.find_neighbors();
     std::vector<std::vector<int>> neighbors(numofparticles);
     CompactNSearch::PointSet const& ps_1 = nsearch.point_set(point_set_id);
