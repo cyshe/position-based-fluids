@@ -144,6 +144,7 @@ void animate_implicit<2>(
         // Initialize new neighbor list
         std::vector<std::vector<int>> neighbors = find_neighbors_compact<2>(x, h);
 
+
         // Create list of neighbor pairs (as elements for TinyAD)
         std::vector<Eigen::Vector2i> elements;
         for (int i = 0; i < n; i++){

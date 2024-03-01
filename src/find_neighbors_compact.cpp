@@ -16,7 +16,7 @@ std::vector<std::vector<int>> find_neighbors_compact<2>(
     NeighborhoodSearch nsearch(h);
     int numofparticles = x.rows()/DIM;
     Eigen::VectorXd x_new = x;
-    Eigen::MatrixXd x_3d;
+    Eigen::MatrixXd x_3d(numofparticles, 3);
     if (DIM == 2){
         //extend to 3d
         x_3d.setZero();
