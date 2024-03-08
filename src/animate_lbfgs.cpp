@@ -102,9 +102,6 @@ void animate_lbfgs<2>(
 
     // Vectors
     VectorXd b = VectorXd::Zero(2 * n);
-    //VectorXd 
-    Jx = VectorXd::Zero(n);
-    VectorXd lambda = VectorXd::Zero(2 * n);
 
     // row-wise flatten function
     auto field_to_vec = [](const MatrixXd& m) {
@@ -154,20 +151,20 @@ void animate_lbfgs<2>(
     // d = -r
     // x = x + alpha * d
     // Lbfgs solver
-    for (int it = 0; it < iters; it++){
-        // Calculate neighbors (as list of indices
-        std::vector<std::vector<int>> neighbors = find_neighbors_compact<2>(x, h);
+    // Create spacing energy function and evaluate gradient and hessian
+    // Assemble B matrix -- jacobian w.r.t of the J - J(x) constraint
 
-        // Create list of neighbor pairs (as elements for TinyAD)
-        std::vector<Eigen::Vector2i> elements;
-        for (int i = 0; i < n; i++){
-        //if (neighbors[i].size() <= 7) std::cout << "i = " << i << ", neighbors = " << neighbors[i].size() << std::endl; 
-            for (int j = 0; j < neighbors[i].size(); j++){
-                elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
+    std::vector<std::vector<int>> neighbors = find_neighbors_compact<2>(x, h);
+
+    // Create list of neighbor pairs (as elements for TinyAD)
+    std::vector<Eigen::Vector2i> elements;
+    for (int i = 0; i < n; i++){
+    //if (neighbors[i].size() <= 7) std::cout << "i = " << i << ", neighbors = " << neighbors[i].size() << std::endl; 
+        for (int j = 0; j < neighbors[i].size(); j++){
+            elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
             }
-        }
+    }
 
-        // Assemble B matrix -- jacobian w.r.t of the J - J(x) constraint
         std::vector<Triplet<double>> B_triplets;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < neighbors[i].size(); j++) {
@@ -185,9 +182,44 @@ void animate_lbfgs<2>(
         }
         B.setFromTriplets(B_triplets.begin(), B_triplets.end());
 
+    auto spacing_energy = spacing_energy_func<2>(x, elements, 0.08, m, fac, W_dq, k_spacing);
+    std::cout << "Evaluate gradient and hessian spacing" << std::endl;
+    auto [f, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
+ 
+    if (reset_A){
+        A = M;
+        if (psi_bool) {
+            A += psi_hessian<2>(H, B, V_b_inv, primal);
+        }
+        if (spacing_bool) {
+            A += H_spacing;
+        }
+        if (st_bool) {
+            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView();
+        }
+        if (bounds_bool) {
+            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView();
+        }
+    }
+    SimplicialLDLT<SparseMatrix<double>> solver;
+        solver.compute(A);
+        if (solver.info() != Success) {
+            std::cout << "decomposition failed" << std::endl;
+            exit(1);
+        }
 
-        // Calculate densities (as function of x)
-        Jx = calculate_densities<2>(x, neighbors, h, m, fac) / rho_0; 
+    for (int it = 0; it < iters; it++){
+        // Calculate neighbors (as list of indices
+        neighbors = find_neighbors_compact<2>(x, h);
+
+        // Create list of neighbor pairs (as elements for TinyAD)
+        elements.clear();
+        for (int i = 0; i < n; i++){
+        //if (neighbors[i].size() <= 7) std::cout << "i = " << i << ", neighbors = " << neighbors[i].size() << std::endl; 
+            for (int j = 0; j < neighbors[i].size(); j++){
+                elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
+            }
+        }
 
         // Create spacing energy function and evaluate gradient and hessian
         auto spacing_energy = spacing_energy_func<2>(x, elements, 0.08, m, fac, W_dq, k_spacing);
@@ -202,7 +234,7 @@ void animate_lbfgs<2>(
         VectorXd b_bounds = VectorXd::Zero(2 * n);
 
         std::cout << "Calculate gradient" << std::endl;
-        b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
+        b = b_inertial;
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
             b += b_psi;
@@ -220,7 +252,7 @@ void animate_lbfgs<2>(
             b += dt * dt * b_bounds;
         }
 
-        VectorXd q = -b;
+        VectorXd q = b;
         VectorXd rho = VectorXd::Zero(iters);
         VectorXd s = VectorXd::Zero(2 * n);
         VectorXd t = VectorXd::Zero(2 * n);
@@ -245,27 +277,7 @@ void animate_lbfgs<2>(
         }
 
 
-        if (reset_A){
-            A = M;
-            if (psi_bool) {
-                A += psi_hessian<2>(H, B, V_b_inv, primal);
-            }
-            if (spacing_bool) {
-                A += H_spacing;
-            }
-            if (st_bool) {
-                A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView();
-            }
-            if (bounds_bool) {
-                A += bounds_hessian<2>(x, low_bound, up_bound).sparseView();
-            }
-        }
-        SimplicialLDLT<SparseMatrix<double>> solver;
-        solver.compute(A);
-        if (solver.info() != Success) {
-            std::cout << "decomposition failed" << std::endl;
-            exit(1);
-        }
+        
         VectorXd delta_x = solver.solve(q);
 
         for (int i = it-1; i > -1; i--) {
@@ -281,34 +293,20 @@ void animate_lbfgs<2>(
         } 
         std::cout << "delta_x: " << delta_x.norm() << std::endl;
 
-        // update prev_x and prev_grad list
-        lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
-               - V_b_inv * kappa_dt_sqr * (J - VectorXd::Ones(n));
-
-        VectorXd delta_J = -H_inv * (kappa_dt_sqr * (J - VectorXd::Ones(n)) + V_b * lambda);
-
 
         // Temporary variables for line search
         VectorXd x_new = VectorXd::Zero(n*2);
-        VectorXd J_new = VectorXd::Zero(n);
 
         // Energy function for line search
         auto energy_func = [&](double alpha) {
             x_new = x + alpha * delta_x;
-            J_new = J + alpha * delta_J;
 
             // Inertial energy
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
 
             // Mixed potential energy
-            double e_psi = psi_energy<2>(x_new, J_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
-            //0.5 * kappa_dt_sqr * (J_new - VectorXd::Ones(n)).squaredNorm();
-
-            // Mixed constraint energy
-            // Jx = calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0;
-
-            double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0));
-
+            double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
+            
             // Spacing energy
             double e_s = spacing_energy.eval(x_new);
 
@@ -319,7 +317,7 @@ void animate_lbfgs<2>(
             // Boundary energy
             double e_bound = bounds_energy<2>(x_new, low_bound, up_bound);
 
-            return e_i + e_psi + e_c + e_s + e_st + e_bound;
+            return e_i + e_psi + e_s + e_st + e_bound;
         };
 
         // Perform line search (if enabled) and update variables
@@ -333,20 +331,17 @@ void animate_lbfgs<2>(
             //    //std::cout << "alpha: " << alpha << std::endl;
                 alpha *= 0.5;
                 e_new = energy_func(alpha);
+                std::cout << "e_new: " << e_new << std::endl;
             }
             std::cout << "!!!alpha: " << alpha << std::endl;
             //if (alpha < 1e-10 && it == 0){
             //    std::cout << "line search failed" << std::endl;
-            //    SelfAdjointEigenSolver<MatrixXd> es;
-            //    es.compute(MatrixXd(A));
-            //    std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
             //    //std::cout << delta_X << std::endl;
             //    //exit(1);
             //}
             //
         }
         x += alpha * delta_x;
-        J += alpha * delta_J;
         
         // Write gradients for visualization
         for (int i = 0; i < n; i++) {

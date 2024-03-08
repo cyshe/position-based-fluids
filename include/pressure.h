@@ -18,7 +18,6 @@ double molli_deriv_psi(
 template <int dim>
 double psi_energy(
     const Eigen::VectorXd & x,
-    const Eigen::VectorXd & J,
     const std::vector<std::vector<int>> neighbors,
     const double h,
     const double m,

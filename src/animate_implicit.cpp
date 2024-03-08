@@ -285,7 +285,7 @@ void animate_implicit<2>(
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
             
             // Mixed potential energy
-            double e_psi = psi_energy<2>(x_new, J_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
+            double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
             //0.5 * kappa_dt_sqr * (J_new - VectorXd::Ones(n)).squaredNorm();
 
             // Mixed constraint energy

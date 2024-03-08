@@ -116,7 +116,7 @@ void callback() {
     //  lower_bound, upper_bound, numofparticles, iters, dt, 
     //  k_psi, k_st, k_s, h, st_threshold, rho_0, gravity,
     //  fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal);
-    resetA = (frame % 10 == 0);
+    resetA = (frame % 1 == 0);
 
     animate_lbfgs<2>(q, q_dot, J, Jx, N, prev_Xs, prev_grads,
       grad_i, grad_psi, grad_s, grad_st, A,
