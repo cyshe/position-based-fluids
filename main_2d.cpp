@@ -28,7 +28,7 @@ using namespace Eigen;
 
 polyscope::PointCloud* psCloud;
 
-MatrixXd q0, q, q_dot, prev_Xs, prev_grads; // particle positions, velocities
+MatrixXd q0, q, q_dot; // particle positions, velocities
 MatrixXi N;             // Per-particle neighbors
 VectorXd J, Jx;
 MatrixXd grad_i, grad_psi, grad_c, grad_s, grad_st;
@@ -116,9 +116,9 @@ void callback() {
     //  lower_bound, upper_bound, numofparticles, iters, dt, 
     //  k_psi, k_st, k_s, h, st_threshold, rho_0, gravity,
     //  fd_check, bounds, converge_check, do_line_search, smooth_mol, psi_bool, spacing_bool, st_bool, primal);
-    resetA = (frame % 1 == 0);
+    resetA = (frame % 2 == 0);
 
-    animate_lbfgs<2>(q, q_dot, J, Jx, N, prev_Xs, prev_grads,
+    animate_lbfgs<2>(q, q_dot, J, Jx, N,
       grad_i, grad_psi, grad_s, grad_st, A,
       lower_bound, upper_bound, numofparticles, iters, dt, 
       k_psi, k_st, k_s, h, st_threshold, rho_0, gravity,
@@ -164,7 +164,6 @@ void callback() {
   if (ImGui::Button("Reset")) {
     q = q0;
     q_dot.setZero();
-    prev_Xs.setZero();  prev_grads.setZero();
     psCloud->updatePointPositions2D(q);
     frame = 0;
     MatrixXd X = q.transpose();
@@ -231,11 +230,6 @@ int main(int argc, char *argv[]){
   q_dot.resize(numofparticles, 2);
   q_dot.setZero();
 
-  prev_Xs.resize(numofparticles * 2, 10);
-  prev_grads.resize(numofparticles * 2, 10);
-
-  prev_Xs.setZero();
-  prev_grads.setZero();
 
   // initialize gradients
   grad_i.resize(numofparticles, 3);

@@ -11,8 +11,6 @@ void animate_lbfgs(
     Eigen::VectorXd & J, 
     Eigen::VectorXd & Jx, 
     Eigen::MatrixXi & N,
-    Eigen::MatrixXd & prev_Xs,
-    Eigen::MatrixXd & prev_grads,
     Eigen::MatrixXd & grad_i,
     Eigen::MatrixXd & grad_psi,
     Eigen::MatrixXd & grad_s,

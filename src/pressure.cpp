@@ -45,7 +45,7 @@ template <>
 double psi_energy<2>(
     const Eigen::VectorXd & x,
     const std::vector<std::vector<int>> neighbors,
-    const double h,
+    const double h, //timestep
     const double m,
     const double fac,
     const double kappa,
@@ -60,7 +60,7 @@ double psi_energy<2>(
 
     for (int i = 0; i < n; i++){
         double mollifier = mollifier_psi(densities(i) * rho_0, threshold);
-        e_psi += 0.5 * kappa * h * h * (densities(i) - 1) * (densities(i) - 1) * mollifier; 
+        e_psi += 0.5 * kappa * (densities(i) - 1) * (densities(i) - 1) * mollifier; 
     }
     
     return e_psi;
@@ -74,7 +74,7 @@ Eigen::VectorXd psi_gradient<2>(
     const std::vector<std::vector<int>> neighbors,
     const Eigen::SparseMatrix<double> & V_b_inv,
     const Eigen::SparseMatrix<double> & B,
-    const double h,
+    const double h, //timestep size
     const double m,
     const double fac,
     const double kappa,
@@ -90,10 +90,10 @@ Eigen::VectorXd psi_gradient<2>(
     Eigen::VectorXd dpsi = Eigen::VectorXd::Zero(x.size());
 
     if (primal){
-        dpsi = kappa * h * h * -B.transpose() * (densities - Eigen::VectorXd::Ones(n));
+        dpsi = kappa * -B.transpose() * (densities - Eigen::VectorXd::Ones(n));
     }
     else{
-        dpsi = kappa * h * h * -B.transpose() * V_b_inv * (densities - Eigen::VectorXd::Ones(n));
+        dpsi = kappa * -B.transpose() * V_b_inv * (densities - Eigen::VectorXd::Ones(n));
     }
    
 
@@ -106,7 +106,7 @@ Eigen::VectorXd psi_gradient<2>(
         for (int d = 0; d < dim; d++){
             grad(i * dim + d) += mollifier * dpsi(i * dim + d);
         }
-        grad += mol_deriv * 0.5 * kappa * h * h * (densities(i) - 1) * (densities(i) - 1);
+        grad += mol_deriv * 0.5 * kappa * (densities(i) - 1) * (densities(i) - 1);
     }
     return grad;
 }

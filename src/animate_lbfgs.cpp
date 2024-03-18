@@ -6,6 +6,7 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
+#include <deque>
 #include <vector>
 #include "TinyAD/Scalar.hh"
 #include "TinyAD/ScalarFunction.hh"
@@ -39,8 +40,6 @@ void animate_lbfgs<2>(
     VectorXd & J,
     VectorXd & Jx,
     MatrixXi & N,
-    MatrixXd & prev_Xs,
-    MatrixXd & prev_grads,
     Eigen::MatrixXd & grad_i,
     Eigen::MatrixXd & grad_psi,
     Eigen::MatrixXd & grad_s,
@@ -117,6 +116,8 @@ void animate_lbfgs<2>(
     VectorXd x = field_to_vec(X);
     MatrixXd X_hat = X + dt * V + dt_sqr * f_ext;
     VectorXd x_hat = field_to_vec(X_hat);
+    std::deque<VectorXd> prev_Xs;
+    std::deque<VectorXd> prev_grads;
 
     // Diagonal of particle masses
     M.setIdentity();
@@ -189,24 +190,24 @@ void animate_lbfgs<2>(
     if (reset_A){
         A = M;
         if (psi_bool) {
-            A += psi_hessian<2>(H, B, V_b_inv, primal);
+            A += psi_hessian<2>(H, B, V_b_inv, primal) *dt_sqr;
         }
         if (spacing_bool) {
-            A += H_spacing;
+            A += H_spacing * dt *dt;
         }
         if (st_bool) {
-            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView();
+            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView() *dt_sqr;
         }
         if (bounds_bool) {
-            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView();
+            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView() *dt_sqr;
         }
     }
     SimplicialLDLT<SparseMatrix<double>> solver;
-        solver.compute(A);
-        if (solver.info() != Success) {
-            std::cout << "decomposition failed" << std::endl;
-            exit(1);
-        }
+    solver.compute(A);
+    if (solver.info() != Success) {
+        std::cout << "decomposition failed" << std::endl;
+        exit(1);
+    }
 
     for (int it = 0; it < iters; it++){
         // Calculate neighbors (as list of indices
@@ -236,61 +237,112 @@ void animate_lbfgs<2>(
         std::cout << "Calculate gradient" << std::endl;
         b = b_inertial;
         if (psi_bool) {
-            b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
-            b += b_psi;
+            b_psi = psi_gradient<2>(x, J, neighbors, V_b_inv, B, dt, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
+            b += dt * dt * b_psi;
         }
         if (spacing_bool) {
-            b_spacing = -g_spacing;
+            b_spacing = g_spacing;
             b += dt * dt * b_spacing;
         }
         if (st_bool) {
-            b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
+            b_st = surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
             b += dt * dt * b_st;
         }
         if (bounds_bool) {
-            b_bounds = -bounds_gradient<2>(x, low_bound, up_bound);
+            b_bounds = bounds_gradient<2>(x, low_bound, up_bound);
             b += dt * dt * b_bounds;
         }
 
-        VectorXd q = b;
+        VectorXd q = -b;
         VectorXd rho = VectorXd::Zero(iters);
         VectorXd s = VectorXd::Zero(2 * n);
         VectorXd t = VectorXd::Zero(2 * n);
-        double sigma = 0.0;
-        for (int i = 0; i < it; i++){
-            std::cout << "i: " << i << " it: " << it << std::endl;
+        VectorXd sigma = VectorXd::Zero(iters);
+
+        std::deque<VectorXd>::iterator i = prev_Xs.begin();
+        std::deque<VectorXd>::iterator j = prev_grads.begin();
+        std::cout << "L-BFGS" << std::endl;
+        //queue
+        //present ------ past
+        //1 2 3 4 5 6 7
+
+        //rho and other vectors
+        //present ------ past
+        //1 2 3 4 5 6 7
+
+        //loop 1
+        //present ------ past
+        //i = 1 2 3 4 5 6 7 
+
+        //loop 2
+        //past ------- present
+        //i = 7 6 5 4 3 2 1
+
+        while (i != prev_Xs.end()){
+            std::cout << (*i).norm() << std::endl;
             s.setZero();
-            t.setZero();        
-            double sigma = 0;
-            if (i == 0){
-                s = x - prev_Xs.col(it);
-                t = b - prev_grads.col(it);
+            t.setZero();
+            if (i == prev_Xs.begin()){
+                s = x - (*i);
+                t = b - (*j);
             }
             else{
-                s = prev_Xs.col(it-1) - prev_Xs.col(it);
-                t = prev_grads.col(it-1) - prev_grads.col(it);
+                // new x - old x
+                s = *(i-1) - *i;
+                // new grad - old grad
+                t = *(j-1) - *j;
             }
-            if (rho(i) < 1e-10) continue;
-            rho(i) = (t.transpose() * s).trace();
-            sigma = (s.transpose() * q).trace() / rho(i);
-            q = q - sigma * t;
-        }
-
-
+            
+            rho(std::distance(prev_Xs.begin(), i)) = (t.transpose() * s).trace();
+            if (abs(rho(std::distance(prev_Xs.begin(), i))) < 1e-10){
+                sigma(std::distance(prev_Xs.begin(), i)) = 0;
+                std::cout << "rho continue"<< std::endl;
+                i ++;
+                j ++;
+                continue;
+            }
+            sigma(std::distance(prev_Xs.begin(), i)) = (s.transpose() * q).trace() / rho(std::distance(prev_Xs.begin(), i));
+            std::cout << "sigma: " << sigma(std::distance(prev_Xs.begin(), i)) << std::endl;
+            std::cout << "t" << t.norm() << std::endl;
+            std::cout << "q: " << q.norm() << std::endl;
+            std::cout << "st: "<< (sigma(std::distance(prev_Xs.begin(), i))*t).norm() << std::endl;
+            q = q - (sigma(std::distance(prev_Xs.begin(), i)) * t);
+            std::cout << "q: " << q.norm() << std::endl;
+            i ++; 
+            j ++;
+        }        
         
+
+        std::cout << "A^-1 * q" << std::endl;
         VectorXd delta_x = solver.solve(q);
 
-        for (int i = it-1; i > -1; i--) {
+        i = prev_Xs.end() -1;
+        j = prev_grads.end() -1;
+        while (i != prev_Xs.begin()-1){
+            if (abs(rho(std::distance(prev_Xs.begin(), i))) < 1e-10) {
+                std::cout << "rho continue :" << rho(std::distance(prev_Xs.begin(), i))<< std::endl;
+                i --;
+                j --;
+                continue;
+            }
+            s.setZero();
+            t.setZero();
+            if (i == prev_Xs.begin()){
+                s = x - *i;
+                t = b - *j;
+            }
+            else{
+                s = *(i-1) - *i;
+                t = *(j-1) - *j;
+            }
 
-            s = prev_Xs.col(i-1) - prev_Xs.col(i);
-            t = prev_grads.col(i-1) - prev_grads.col(i);
-
-            if (rho(i) < 1e-10) continue;
-
-            double eta = (t.transpose() * delta_x).trace() / rho(i);
-            delta_x = delta_x + (sigma - eta) * s;
-
-        } 
+            double eta = (t.transpose() * delta_x).trace() / rho(std::distance(prev_Xs.begin(), i));
+            delta_x = delta_x + (sigma(std::distance(prev_Xs.begin(), i)) - eta) * s;
+            i --;
+            j --;
+        }
+         
+        
         std::cout << "delta_x: " << delta_x.norm() << std::endl;
 
 
@@ -305,17 +357,17 @@ void animate_lbfgs<2>(
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
 
             // Mixed potential energy
-            double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
+            double e_psi = psi_energy<2>(x_new, neighbors, dt, m, fac, kappa, rho_0 * st_threshold, rho_0) * dt_sqr;
             
             // Spacing energy
-            double e_s = spacing_energy.eval(x_new);
+            double e_s = spacing_energy.eval(x_new) * dt_sqr;
 
             // Surface tension energy
             double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st_dt_sqr,
-                rho_0 * st_threshold, smooth_mol);
+                rho_0 * st_threshold, smooth_mol) * dt_sqr;
 
             // Boundary energy
-            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound);
+            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
 
             return e_i + e_psi + e_s + e_st + e_bound;
         };
@@ -364,13 +416,8 @@ void animate_lbfgs<2>(
             std::cout << "converged" << std::endl;
         }
 
-
-        for (int i = 1; i < iters; i++){
-            prev_Xs.col(i) = prev_Xs.col(i-1);
-            prev_grads.col(i) = prev_grads.col(i-1);
-        }
-        prev_grads.col(0) = b;
-        prev_Xs.col(0) = x;
+        prev_Xs.push_front(x);
+        prev_grads.push_front(b);
     }
     // Turn x back into a field
     MatrixXd X_new = Eigen::Map<MatrixXd>(x.data(), 2, n).transpose();
@@ -388,8 +435,6 @@ void animate_lbfgs<3>(
     VectorXd & J,
     VectorXd & Jx,
     MatrixXi & N,
-    MatrixXd & prev_Xs,
-    MatrixXd & prev_grads,
     Eigen::MatrixXd & grad_i,
     Eigen::MatrixXd & grad_psi,
     Eigen::MatrixXd & grad_s,
