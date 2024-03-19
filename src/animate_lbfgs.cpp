@@ -278,6 +278,7 @@ void animate_lbfgs<2>(
         //past ------- present
         //i = 7 6 5 4 3 2 1
 
+        std::cout << "gradient norm " << b.norm() << std::endl; 
         while (i != prev_Xs.end()){
             std::cout << (*i).norm() << std::endl;
             s.setZero();
@@ -292,6 +293,9 @@ void animate_lbfgs<2>(
                 // new grad - old grad
                 t = *(j-1) - *j;
             }
+
+            std::cout << "s: " << s.norm() << std::endl;
+            std::cout << "t: " << t.norm() << std::endl;
             
             rho(std::distance(prev_Xs.begin(), i)) = (t.transpose() * s).trace();
             if (abs(rho(std::distance(prev_Xs.begin(), i))) < 1e-10){
@@ -341,7 +345,8 @@ void animate_lbfgs<2>(
             i --;
             j --;
         }
-         
+        prev_Xs.push_front(x);
+        prev_grads.push_front(b);
         
         std::cout << "delta_x: " << delta_x.norm() << std::endl;
 
@@ -353,6 +358,7 @@ void animate_lbfgs<2>(
         auto energy_func = [&](double alpha) {
             x_new = x + alpha * delta_x;
 
+            neighbors = find_neighbors_compact<2>(x_new, h);
             // Inertial energy
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
 
@@ -363,7 +369,7 @@ void animate_lbfgs<2>(
             double e_s = spacing_energy.eval(x_new) * dt_sqr;
 
             // Surface tension energy
-            double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st_dt_sqr,
+            double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st,
                 rho_0 * st_threshold, smooth_mol) * dt_sqr;
 
             // Boundary energy
@@ -393,6 +399,7 @@ void animate_lbfgs<2>(
             //}
             //
         }
+        std::cout << "e after line search: " << energy_func(alpha) << std::endl;
         x += alpha * delta_x;
         
         // Write gradients for visualization
@@ -416,8 +423,7 @@ void animate_lbfgs<2>(
             std::cout << "converged" << std::endl;
         }
 
-        prev_Xs.push_front(x);
-        prev_grads.push_front(b);
+        
     }
     // Turn x back into a field
     MatrixXd X_new = Eigen::Map<MatrixXd>(x.data(), 2, n).transpose();

@@ -281,6 +281,7 @@ void animate_implicit<2>(
             x_new = x + alpha * delta_x;
             J_new = J + alpha * delta_J;
 
+            neighbors = find_neighbors_compact<2>(x_new, h);
             // Inertial energy
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
             
