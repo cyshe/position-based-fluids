@@ -240,7 +240,7 @@ void animate_implicit<2>(
         b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
-            b += b_psi;
+            b += dt * dt * b_psi;
         }
         if (spacing_bool) {
             b_spacing = -g_spacing;
@@ -286,23 +286,23 @@ void animate_implicit<2>(
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
             
             // Mixed potential energy
-            double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
+            double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0) * dt_sqr;
             //0.5 * kappa_dt_sqr * (J_new - VectorXd::Ones(n)).squaredNorm();
 
             // Mixed constraint energy
             // Jx = calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0;
 
-            double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0));
+            double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0)) * dt_sqr;
             
             // Spacing energy
-            double e_s = spacing_energy.eval(x_new);
+            double e_s = spacing_energy.eval(x_new) *dt_sqr;
 
             // Surface tension energy
-            double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st_dt_sqr,
-                rho_0 * st_threshold, smooth_mol);
+            double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st,
+                rho_0 * st_threshold, smooth_mol) * dt_sqr;
 
             // Boundary energy
-            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound);
+            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
             
             return e_i + e_psi + e_c + e_s + e_st + e_bound;
         };
