@@ -77,11 +77,10 @@ void animate_implicit<2>(
     // Energy scales
     const double dt_sqr = dt * dt;
     const double kappa_dt_sqr = dt_sqr * kappa; 
-    const double k_st_dt_sqr = dt_sqr * k_st;   // surface tension
 
     // Spacing energy params
     const double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
-    const double k_spacing = dt_sqr * k_s;
+    const double k_spacing = k_s;
     const double W_dq = cubic_bspline(dq, fac); // fixed kernel value at dq
 
     MatrixXd f_ext(n, 2);
@@ -139,8 +138,6 @@ void animate_implicit<2>(
 
     // Newton solver
     for (int it = 0; it < iters; it++) {
-        //auto begin = std::chrono::high_resolution_clock::now();
-
         // Initialize new neighbor list
         std::vector<std::vector<int>> neighbors = find_neighbors_compact<2>(x, h);
 
@@ -176,11 +173,6 @@ void animate_implicit<2>(
         B.setFromTriplets(B_triplets.begin(), B_triplets.end());
     
 
-        //auto end = std::chrono::high_resolution_clock::now();
-         //auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-        //printf("Time measured 1: %.3f seconds.\n", elapsed.count() * 1e-9);
-        //begin = std::chrono::high_resolution_clock::now();
-
         // Create spacing energy function and evaluate gradient and hessian
         auto spacing_energy = spacing_energy_func<2>(x, elements, 0.08, m, fac, W_dq, k_spacing);
         std::cout << "Evaluate gradient and hessian" << std::endl;
@@ -206,38 +198,31 @@ void animate_implicit<2>(
             // std::cout << fH_spacing.row(0) << std::endl; 
             // std::cout << H_spacing.row(0) << std::endl;
         }
-        //end = std::chrono::high_resolution_clock::now();
-        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-        //printf("Time measured 2: %.3f seconds.\n", elapsed.count() * 1e-9);
-        //begin = std::chrono::high_resolution_clock::now();
         
-        //Eigen::MatrixXd points = Eigen::Map<MatrixXd>(x.data(), 2, n).transpose();
-
 
         // Assemble left and right hand sides of system
         
         A = M;
         if (psi_bool) {
-            A += psi_hessian<2>(H, B, V_b_inv, primal);
+            A += psi_hessian<2>(H, B, V_b_inv, primal) * dt_sqr;
         }
         if (spacing_bool) {
-            A += H_spacing;
+            A += H_spacing * dt_sqr;
         }
         if (st_bool) {
-            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView();
+            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView() * dt_sqr;
         }
         if (bounds_bool) {
-            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView();
+            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView() * dt_sqr;
         }
         
-        VectorXd dpsi_dJ = VectorXd::Zero(n);
         VectorXd b_inertial = -M * (x - x_hat);
         VectorXd b_psi = VectorXd::Zero(2 * n);
         VectorXd b_spacing = VectorXd::Zero(2 * n);
         VectorXd b_st = VectorXd::Zero(2 * n);
         VectorXd b_bounds = VectorXd::Zero(2 * n);
         
-        b = b_inertial; // + B.transpose() * (V_b_inv *H *V_b_inv * (J - Jx));
+        b = b_inertial;
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
             b += dt * dt * b_psi;
@@ -262,15 +247,13 @@ void animate_implicit<2>(
             exit(1);
         }
         VectorXd delta_x = solver.solve(b);
-        lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
-               - V_b_inv * kappa_dt_sqr * (J - VectorXd::Ones(n));
-        
-        VectorXd delta_J = -H_inv * (kappa_dt_sqr * (J - VectorXd::Ones(n)) + V_b * lambda);
 
-        //end = std::chrono::high_resolution_clock::now();
-        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-        //printf("Time measured 4: %.3f seconds.\n", elapsed.count() * 1e-9);
-        //begin = std::chrono::high_resolution_clock::now();
+        if (~primal){
+            lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
+               - V_b_inv * kappa_dt_sqr * (J - VectorXd::Ones(n));
+        }
+
+        VectorXd delta_J = -H_inv * (kappa_dt_sqr * (J - VectorXd::Ones(n)) + V_b * lambda);
 
         // Temporary variables for line search
         VectorXd x_new = VectorXd::Zero(n*2);
@@ -287,12 +270,12 @@ void animate_implicit<2>(
             
             // Mixed potential energy
             double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0) * dt_sqr;
-            //0.5 * kappa_dt_sqr * (J_new - VectorXd::Ones(n)).squaredNorm();
 
             // Mixed constraint energy
-            // Jx = calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0;
-
-            double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0)) * dt_sqr;
+            double e_c = 0.0;
+            if (~primal){
+                e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0)) * dt_sqr;
+            }
             
             // Spacing energy
             double e_s = spacing_energy.eval(x_new) *dt_sqr;
@@ -332,18 +315,7 @@ void animate_implicit<2>(
         x += alpha * delta_x;
         J += alpha * delta_J;
 
-        //end = std::chrono::high_resolution_clock::now();
-        //elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-        //printf("Time measured 5: %.3f seconds.\n", elapsed.count() * 1e-9);
 
-        
-        output_file << (M * (x - x_hat) ).norm()<< ", " 
-        << g_spacing.norm() << ", " 
-        << (B.transpose()* (V_b_inv * dpsi_dJ)).norm() << ", "
-        << (B.transpose()* (V_b_inv*H*V_b_inv*(J-Jx))).norm() << ", "
-        << lambda.norm() << ", "
-        << (alpha * delta_J).norm() << ", "
-        << (alpha * delta_x).norm() << std::endl;
 
         // Write gradients for visualization
         for (int i = 0; i < n; i++) {
@@ -378,23 +350,6 @@ void animate_implicit<2>(
     for (int i = 0; i < 16; i++) {std::cout<< "i = " << i << ", " << J(i) << " " << Jx(i) << std::endl;}
 
     //std::cout << X << std::endl;
-    // boundary detection
-    /*
-    if (bounds) {
-        for (int i = 0; i < n; i++){
-            for (int j = 0; j < 2; ++j) {
-                if (X(i,j) < low_bound(j)) {
-                    V(i, j) = 0; //abs(V(i, j));
-                    X(i,j) = low_bound(j);
-                }
-                if (X(i,j) > up_bound(j)) {
-                    V(i, j) = 0;// -1* abs(V(i, j));
-                    X(i,j) = up_bound(j);
-                }
-            }
-        }
-    }
-    */
     return;
 }
 

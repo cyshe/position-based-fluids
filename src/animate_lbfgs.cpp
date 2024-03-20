@@ -83,7 +83,7 @@ void animate_lbfgs<2>(
 
     // Spacing energy params
     const double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
-    const double k_spacing = dt_sqr * k_s;
+    const double k_spacing = k_s;
     const double W_dq = cubic_bspline(dq, fac); // fixed kernel value at dq
 
     MatrixXd f_ext(n, 2);
@@ -228,7 +228,7 @@ void animate_lbfgs<2>(
         auto [f, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
 
 
-        VectorXd b_inertial = -M * (x - x_hat);
+        VectorXd b_inertial = M * (x - x_hat);
         VectorXd b_psi = VectorXd::Zero(2 * n);
         VectorXd b_spacing = VectorXd::Zero(2 * n);
         VectorXd b_st = VectorXd::Zero(2 * n);
@@ -263,19 +263,19 @@ void animate_lbfgs<2>(
         std::deque<VectorXd>::iterator j = prev_grads.begin();
         std::cout << "L-BFGS" << std::endl;
         //queue
-        //present ------ past
+        //new ------ old
         //1 2 3 4 5 6 7
 
         //rho and other vectors
-        //present ------ past
+        //new ------ old
         //1 2 3 4 5 6 7
 
         //loop 1
-        //present ------ past
+        //new ------ old
         //i = 1 2 3 4 5 6 7 
 
         //loop 2
-        //past ------- present
+        //old ------- new
         //i = 7 6 5 4 3 2 1
 
         std::cout << "gradient norm " << b.norm() << std::endl; 
