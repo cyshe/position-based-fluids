@@ -1,4 +1,3 @@
-#pragma once
 #include "find_neighbors_compact.h"
 #include <iostream>
 #include <CompactNSearch>

@@ -1,4 +1,3 @@
-#pragma once
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <Eigen/Sparse>

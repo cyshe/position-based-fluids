@@ -1,10 +1,10 @@
-#pragma once
-
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include "cubic_bspline.h"
 #include "calculate_densities.h"
 #include "pressure.h"
+#include "tbb/parallel_for.h"
+#include <iostream>
 
 double mollifier_psi(
     double density,
@@ -95,6 +95,7 @@ Eigen::VectorXd psi_gradient<2>(
     else{
         dpsi = kappa * -B.transpose() * V_b_inv * (densities - Eigen::VectorXd::Ones(n));
     }
+    std::cout << "dpsi norm: " << dpsi.norm() << std::endl;
    
 
     // multiply by mollifier

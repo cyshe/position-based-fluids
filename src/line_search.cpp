@@ -1,6 +1,7 @@
-#pragma once
 #include <Eigen/Core>
 #include "line_search.h"
+#include <iostream>
+#include <Eigen/Eigenvalues> 
 
 using namespace Eigen;
 

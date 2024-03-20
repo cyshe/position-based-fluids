@@ -1,4 +1,3 @@
-#pragma once
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -174,9 +173,10 @@ void animate_implicit<2>(
     
 
         // Create spacing energy function and evaluate gradient and hessian
-        auto spacing_energy = spacing_energy_func<2>(x, elements, 0.08, m, fac, W_dq, k_spacing);
+        auto spacing_energy = spacing_energy_func<2>(x, elements, h, m, fac, W_dq, k_spacing);
         std::cout << "Evaluate gradient and hessian" << std::endl;
         auto [f, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
+        std::cout << "initial spacing energy: " << f << " gnorm: " << g_spacing.norm() << std::endl;
 
 
         if (fd_check) {
@@ -226,6 +226,7 @@ void animate_implicit<2>(
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
             b += dt * dt * b_psi;
+            std::cout << "b_psi norm: " << b_psi.norm() << std::endl;
         }
         if (spacing_bool) {
             b_spacing = -g_spacing;
@@ -248,7 +249,7 @@ void animate_implicit<2>(
         }
         VectorXd delta_x = solver.solve(b);
 
-        if (~primal){
+        if (!primal){
             lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
                - V_b_inv * kappa_dt_sqr * (J - VectorXd::Ones(n));
         }
@@ -262,32 +263,60 @@ void animate_implicit<2>(
         // Energy function for line search
         auto energy_func = [&](double alpha) {
             x_new = x + alpha * delta_x;
-            J_new = J + alpha * delta_J;
+            std::cout << "energy func x norm: " << x_new.norm() << std::endl;
+            double energy = 0;
 
             neighbors = find_neighbors_compact<2>(x_new, h);
             // Inertial energy
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
+            std::cout << "\t e_i " << e_i;
+            energy += e_i;
             
             // Mixed potential energy
-            double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0) * dt_sqr;
+            if (psi_bool) {
+                double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0) * dt_sqr;
+                energy += e_psi;
+            }
 
             // Mixed constraint energy
-            double e_c = 0.0;
-            if (~primal){
-                e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0)) * dt_sqr;
+            if (!primal){
+                J_new = J + alpha * delta_J;
+                double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0)) * dt_sqr;
+                energy += e_c;
             }
             
             // Spacing energy
-            double e_s = spacing_energy.eval(x_new) *dt_sqr;
+            if (spacing_bool) {
+/////////
+// Spacing energy needs to use new set of neighbors
+/////////
+                // Rebuild spacing energy function
+                // std::vector<Eigen::Vector2i> elements;
+                // for (int i = 0; i < n; i++){
+                //     for (int j = 0; j < neighbors[i].size(); j++){
+                //         elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
+                //     }
+                // }
+                // auto spacing_energy = spacing_energy_func<2>(x_new, elements, h, m, fac, W_dq, k_spacing);
+                double e_s = spacing_energy.eval(x_new) * dt_sqr;
+                energy += e_s;
+                std::cout << " spacing: " << e_s << std::endl;
+            }
 
             // Surface tension energy
-            double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st,
-                rho_0 * st_threshold, smooth_mol) * dt_sqr;
+            if (st_bool) {
+                double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st,
+                    rho_0 * st_threshold, smooth_mol) * dt_sqr;
+                energy += e_st;
+            }
 
             // Boundary energy
-            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
-            
-            return e_i + e_psi + e_c + e_s + e_st + e_bound;
+            if (bounds_bool) {
+                double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
+                energy += e_bound;
+            }
+            std::cout << "energy: " << energy << std::endl;
+            return energy;
         };
 
         // Perform line search (if enabled) and update variables
@@ -295,7 +324,6 @@ void animate_implicit<2>(
         if (do_line_search) {
             double e_new = energy_func(alpha);
             double e0 = energy_func(0);
-            std::cout << "e0: " << e0 << std::endl;
 
             while (e_new > e0 && alpha > 1e-10){ 
             //    //std::cout << "alpha: " << alpha << std::endl;
@@ -311,6 +339,7 @@ void animate_implicit<2>(
                 //std::cout << delta_X << std::endl;
                 //exit(1);
             }
+            std::cout << "e0: " << e0 << " enew: " << e_new << std::endl;
         }
         x += alpha * delta_x;
         J += alpha * delta_J;

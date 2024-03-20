@@ -19,7 +19,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include)
 file(GLOB H_FILES ${PROJECT_SOURCE_DIR}/include/*.h)
 file(GLOB CPP_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
-
+find_package(TBB REQUIRED)
 
 # Eigen
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
@@ -59,6 +59,7 @@ target_link_libraries(main_2d PUBLIC polyscope Eigen3::Eigen)
 target_link_libraries(main_2d PUBLIC finitediff::finitediff)
 target_link_libraries(main_2d PUBLIC ipc::toolkit)
 target_link_libraries(main_2d PUBLIC CompactNSearch)
+target_link_libraries(main_2d PUBLIC TBB::tbb)
 target_compile_definitions(main_2d PUBLIC USE_DOUBLE)
 
 add_executable(smoke_sim smoke_sim.cpp ${CPP_FILES})

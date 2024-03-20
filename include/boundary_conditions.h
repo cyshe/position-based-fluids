@@ -85,7 +85,8 @@ Eigen::VectorXd bounds_gradient(
             }
         
             d = ipc::point_edge_distance(point, e0, e1);
-            grad.segment<dim>(dim * i) += ipc::point_edge_distance_gradient(point, e0, e1).segment<dim>(0) * 
+            grad.template segment<dim>(dim * i) += 
+                ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0) * 
                 ipc::barrier_gradient(d, 0.2);
         }
     }
@@ -127,11 +128,12 @@ Eigen::MatrixXd bounds_hessian(
         
             d = ipc::point_edge_distance(point, e0, e1);
             hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_gradient(d, 0.05)
-            * ipc::point_edge_distance_hessian(point, e0, e1).block<dim, dim>(0, 0);
+                * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0);
+
+
+            Eigen::Vector<double, dim> g = ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0);
                  
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_hessian(d, 0.05)
-                * ipc::point_edge_distance_gradient(point, e0, e1).segment<dim>(0)
-                * ipc::point_edge_distance_gradient(point, e0, e1).segment<dim>(0).transpose();
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_hessian(d, 0.05) * (g * g.transpose());
         }   
     }
     

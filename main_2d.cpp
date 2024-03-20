@@ -1,4 +1,3 @@
-#pragma once
 #include "animate_sph.h"
 #include "animate_fluids.h"
 #include "animate_implicit.h"
@@ -56,7 +55,7 @@ void callback() {
   static bool is_simulating = false; static bool write_sequence = false;
   static bool fd_check = false;
   static bool converge_check = true;
-  static bool do_line_search = false;
+  static bool do_line_search = true;
   static bool bounds = true;
   static bool smooth_mol = false;
   static bool psi_bool = true;
