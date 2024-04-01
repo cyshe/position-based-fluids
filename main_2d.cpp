@@ -56,11 +56,11 @@ void callback() {
   static bool fd_check = false;
   static bool converge_check = true;
   static bool do_line_search = true;
-  static bool bounds = true;
+  static bool bounds = false;
   static bool smooth_mol = false;
-  static bool psi_bool = true;
+  static bool psi_bool = false;
   static bool spacing_bool = true;
-  static bool st_bool = true;
+  static bool st_bool = false;
   static bool primal = true;
 
 

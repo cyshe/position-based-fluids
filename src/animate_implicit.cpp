@@ -176,10 +176,8 @@ void animate_implicit<2>(
         auto spacing_energy = spacing_energy_func<2>(x, elements, h, m, fac, W_dq, k_spacing);
         std::cout << "Evaluate gradient and hessian" << std::endl;
         auto [f, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
-        std::cout << "initial spacing energy: " << f << " gnorm: " << g_spacing.norm() << std::endl;
-
-
-        if (fd_check) {
+        std::cout << "initial spacing energy: " <<  spacing_energy.eval(x) * dt_sqr << " " << f *dt_sqr <<  " gnorm: " << g_spacing.norm() << std::endl;
+                if (fd_check) {
             fd::AccuracyOrder accuracy = fd::SECOND;
             
             const auto scorr = [&](const Eigen::VectorXd& x) -> double {
@@ -263,19 +261,20 @@ void animate_implicit<2>(
         // Energy function for line search
         auto energy_func = [&](double alpha) {
             x_new = x + alpha * delta_x;
-            std::cout << "energy func x norm: " << x_new.norm() << std::endl;
+            //std::cout << "energy func x norm: " << x_new.norm() << std::endl;
             double energy = 0;
 
             neighbors = find_neighbors_compact<2>(x_new, h);
             // Inertial energy
             double e_i = 0.5 * (x_new - x_hat).transpose() * M * (x_new - x_hat);
-            std::cout << "\t e_i " << e_i;
+            //std::cout << "\t e_i " << e_i << std::endl;
             energy += e_i;
             
             // Mixed potential energy
             if (psi_bool) {
                 double e_psi = psi_energy<2>(x_new, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0) * dt_sqr;
                 energy += e_psi;
+                //std::cout << "\t e_psi " << e_psi << std::endl;
             }
 
             // Mixed constraint energy
@@ -283,6 +282,7 @@ void animate_implicit<2>(
                 J_new = J + alpha * delta_J;
                 double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0)) * dt_sqr;
                 energy += e_c;
+                std::cout << "\t e_c " << e_c << std::endl;
             }
             
             // Spacing energy
@@ -291,16 +291,18 @@ void animate_implicit<2>(
 // Spacing energy needs to use new set of neighbors
 /////////
                 // Rebuild spacing energy function
-                // std::vector<Eigen::Vector2i> elements;
-                // for (int i = 0; i < n; i++){
-                //     for (int j = 0; j < neighbors[i].size(); j++){
-                //         elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
-                //     }
-                // }
-                // auto spacing_energy = spacing_energy_func<2>(x_new, elements, h, m, fac, W_dq, k_spacing);
-                double e_s = spacing_energy.eval(x_new) * dt_sqr;
+                std::vector<Eigen::Vector2i> elements;
+                for (int i = 0; i < n; i++){
+                    for (int j = 0; j < neighbors[i].size(); j++){
+                        elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
+                    }
+                }
+                //auto spacing_energy = spacing_energy_func<2>(x_new, elements, h, m, fac, W_dq, k_spacing);
+                //double e_s = spacing_energy.eval(x_new) * dt_sqr;
+                // auto [e_s, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
+                double e_s = spacing_energy_a<2>(x_new, neighbors, h, m, fac, W_dq, k_spacing) * dt_sqr; 
                 energy += e_s;
-                std::cout << " spacing: " << e_s << std::endl;
+                std::cout << "\t spacing: " << e_s << " " << std::endl;
             }
 
             // Surface tension energy
@@ -308,12 +310,14 @@ void animate_implicit<2>(
                 double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st,
                     rho_0 * st_threshold, smooth_mol) * dt_sqr;
                 energy += e_st;
+                std::cout << "\t st: " << e_st << std::endl;
             }
 
             // Boundary energy
             if (bounds_bool) {
                 double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
                 energy += e_bound;
+                std::cout << "\t bounds: " << e_bound << std::endl;
             }
             std::cout << "energy: " << energy << std::endl;
             return energy;
@@ -336,8 +340,8 @@ void animate_implicit<2>(
                 SelfAdjointEigenSolver<MatrixXd> es;
                 es.compute(MatrixXd(A));
                 std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
-                //std::cout << delta_X << std::endl;
-                //exit(1);
+                // std::cout << delta_X << std::endl;
+                exit(1);
             }
             std::cout << "e0: " << e0 << " enew: " << e_new << std::endl;
         }
@@ -376,7 +380,7 @@ void animate_implicit<2>(
     V = (X_new-X)/dt;
     X = X_new;
 
-    for (int i = 0; i < 16; i++) {std::cout<< "i = " << i << ", " << J(i) << " " << Jx(i) << std::endl;}
+    // for (int i = 0; i < 16; i++) {std::cout<< "i = " << i << ", " << J(i) << " " << Jx(i) << std::endl;}
 
     //std::cout << X << std::endl;
     return;
