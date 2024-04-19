@@ -195,7 +195,7 @@ void animate_lbfgs<2>(
             A += H_spacing * dt *dt;
         }
         if (st_bool) {
-            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView() *dt_sqr;
+            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).sparseView() *dt_sqr;
         }
         if (bounds_bool) {
             A += bounds_hessian<2>(x, low_bound, up_bound).sparseView() *dt_sqr;
@@ -244,7 +244,7 @@ void animate_lbfgs<2>(
             b += dt * dt * b_spacing;
         }
         if (st_bool) {
-            b_st = surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
+            b_st = surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B);
             b += dt * dt * b_st;
         }
         if (bounds_bool) {

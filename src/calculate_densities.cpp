@@ -17,7 +17,7 @@ Matrix<double, dim*dim, 1> density_gradient(
     double r = xij.norm() / h;
     double deriv = cubic_bspline_derivative(r, m*fac);
 
-    Vector2d dphi_dx = deriv * xij / r / h;
+    Vector2d dphi_dx = deriv * xij / r / h; // direction
     grad.template segment<dim>(0) = -dphi_dx;
     grad.template segment<dim>(dim) = dphi_dx;
     return grad;

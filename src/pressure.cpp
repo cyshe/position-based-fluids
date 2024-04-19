@@ -10,7 +10,10 @@ double mollifier_psi(
     double density,
     const double threshold
 ){
+    //return 1;
     double mollifier;
+    double mol_k = 10;
+    return 1/ (1 + exp(10 * (density - threshold)));
     if (density >  1.5 * threshold){
         mollifier = 1;
     }
@@ -27,7 +30,10 @@ double molli_deriv_psi(
     double density,
     const double threshold
 ){
+    // return 0;
     double mollifier;
+    double mol_k = 10;
+    return -mol_k * exp(mol_k * (density - threshold)) / ((1 + exp(mol_k * (density - threshold))) * (1 + exp(mol_k * (density - threshold))));
     if (density >  1.5 * threshold){
         mollifier = 0;
     }
@@ -89,10 +95,16 @@ Eigen::VectorXd psi_gradient<2>(
     Eigen::VectorXd densities = calculate_densities<2>(x, neighbors, h, m, fac)/rho_0;
     Eigen::VectorXd dpsi = Eigen::VectorXd::Zero(x.size());
 
+    Eigen::MatrixXd mol_diag = Eigen::MatrixXd::Zero(n, n);
+    for (int i = 0; i < n; i++){
+        mol_diag(i, i) = mollifier_psi(densities(i)*rho_0, threshold);
+    }
+
     if (primal){
-        dpsi = kappa * -B.transpose() * (densities - Eigen::VectorXd::Ones(n));
+        dpsi = kappa * -B.transpose() * mol_diag * (densities - Eigen::VectorXd::Ones(n));
     }
     else{
+        // TODO
         dpsi = kappa * -B.transpose() * V_b_inv * (densities - Eigen::VectorXd::Ones(n));
     }
     std::cout << "dpsi norm: " << dpsi.norm() << std::endl;
@@ -102,10 +114,10 @@ Eigen::VectorXd psi_gradient<2>(
     double mol = 0;
     for (int i = 0; i < n; i++){
         double mollifier = mollifier_psi(densities(i)*rho_0, threshold); 
-        Eigen::VectorXd mol_deriv = molli_deriv_psi(densities(i)*rho_0, threshold) * -B.row(i) * rho_0;
+        Eigen::VectorXd mol_deriv = molli_deriv_psi(densities(i)*rho_0, threshold) * -B.row(i) *  rho_0;
 
         for (int d = 0; d < dim; d++){
-            grad(i * dim + d) += mollifier * dpsi(i * dim + d);
+            grad(i * dim + d) += dpsi(i * dim + d);
         }
         grad += mol_deriv * 0.5 * kappa * (densities(i) - 1) * (densities(i) - 1);
     }

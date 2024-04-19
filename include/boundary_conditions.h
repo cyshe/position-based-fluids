@@ -13,7 +13,7 @@
 
 template <int dim>
 double bounds_energy(
-    Eigen::VectorXd & x,
+    const Eigen::VectorXd & x,
     const Eigen::Matrix<double, dim, 1> & lower_bound,
     const Eigen::Matrix<double, dim, 1> & upper_bound
 ){
@@ -127,13 +127,13 @@ Eigen::MatrixXd bounds_hessian(
             }
         
             d = ipc::point_edge_distance(point, e0, e1);
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_gradient(d, 0.05)
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_gradient(d, 0.2)
                 * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0);
 
 
             Eigen::Vector<double, dim> g = ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0);
                  
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_hessian(d, 0.05) * (g * g.transpose());
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_hessian(d, 0.2) * (g * g.transpose());
         }   
     }
     

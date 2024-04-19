@@ -63,7 +63,8 @@ void animate_implicit<2>(
     const bool psi_bool,
     const bool spacing_bool,
     const bool st_bool,
-    const bool primal
+    const bool primal,
+    const double dq
     ){
 
     std::ofstream output_file("output.txt", std::ios::app);
@@ -78,7 +79,7 @@ void animate_implicit<2>(
     const double kappa_dt_sqr = dt_sqr * kappa; 
 
     // Spacing energy params
-    const double dq = 0.98; // 0.8 - 1.0 seem to be reasonable values
+    //const double dq = 0.5; // 0.8 - 1.0 seem to be reasonable values
     const double k_spacing = k_s;
     const double W_dq = cubic_bspline(dq, fac); // fixed kernel value at dq
 
@@ -161,7 +162,7 @@ void animate_implicit<2>(
                 const auto& xj = x.segment<2>(2 * neighbors[i][j]);
 
                 // negating gradient because constraint is (J - J(x))
-                Vector4d density_grad = -density_gradient<2>(xi, xj, h, m, fac) / rho_0;
+                Vector4d density_grad = -density_gradient<2>(xi, xj, h, m, fac) / rho_0 / h;
 
                 B_triplets.push_back(Triplet<double>(i, 2 * i, density_grad(0)));
                 B_triplets.push_back(Triplet<double>(i, 2 * i + 1, density_grad(1)));
@@ -173,29 +174,11 @@ void animate_implicit<2>(
     
 
         // Create spacing energy function and evaluate gradient and hessian
-        auto spacing_energy = spacing_energy_func<2>(x, elements, h, m, fac, W_dq, k_spacing);
+        auto spacing_energy = spacing_energy_func<2>(x, elements, h/2, m, fac, W_dq, k_spacing);
         std::cout << "Evaluate gradient and hessian" << std::endl;
         auto [f, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
         std::cout << "initial spacing energy: " <<  spacing_energy.eval(x) * dt_sqr << " " << f *dt_sqr <<  " gnorm: " << g_spacing.norm() << std::endl;
-                if (fd_check) {
-            fd::AccuracyOrder accuracy = fd::SECOND;
-            
-            const auto scorr = [&](const Eigen::VectorXd& x) -> double {
-                return spacing_energy.eval(x);
-            };
-
-            Eigen::VectorXd fg_spacing;
-            fd::finite_gradient(x, scorr, fg_spacing, accuracy, 1.0e-7);
-            std::cout << "Gradient Error: " << (g_spacing - fg_spacing).array().abs().maxCoeff() << std::endl;
-
-            Eigen::MatrixXd fH_spacing;
-            fd::finite_hessian(x, scorr, fH_spacing, accuracy, 1.0e-5);
-            std::cout << "Hessian error: " << (fH_spacing - H_spacing).norm() << std::endl;
-            std::cout << "------------------" <<std::endl;
-            // std::cout << fH_spacing(10,5) << " " << H_spacing(10,5) << std::endl;
-            // std::cout << fH_spacing.row(0) << std::endl; 
-            // std::cout << H_spacing.row(0) << std::endl;
-        }
+        
         
 
         // Assemble left and right hand sides of system
@@ -208,7 +191,7 @@ void animate_implicit<2>(
             A += H_spacing * dt_sqr;
         }
         if (st_bool) {
-            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol).sparseView() * dt_sqr;
+            A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).sparseView() * dt_sqr;
         }
         if (bounds_bool) {
             A += bounds_hessian<2>(x, low_bound, up_bound).sparseView() * dt_sqr;
@@ -231,12 +214,106 @@ void animate_implicit<2>(
             b += dt * dt * b_spacing;
         }
         if (st_bool) {
-            b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
+            b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B);
             b += dt * dt * b_st;
         }
         if (bounds_bool) {
             b_bounds = -bounds_gradient<2>(x, low_bound, up_bound);
             b += dt * dt * b_bounds;
+        }
+
+        if (fd_check) {
+            fd::AccuracyOrder accuracy = fd::SECOND;
+            
+            //const auto bound_func = [&](const Eigen::VectorXd& x) -> double {
+            //    return bounds_energy<2>(x, low_bound, up_bound);
+            //};
+
+            //Eigen::VectorXd fg_bounds;
+            //fd::finite_gradient(x, bound_func, fg_bounds, accuracy, 1.0e-7);
+            //std::cout << "Bounds Gradient Error: " << (-b_bounds - fg_bounds).array().abs().maxCoeff() << std::endl;
+            //std::cout << -b_bounds.head(10) << std::endl;
+            //std::cout << fg_bounds.head(10) << std::endl;
+
+            //Eigen::MatrixXd fH_bounds;
+            //fd::finite_hessian(x, bound_func, fH_bounds, accuracy, 1.0e-5);
+            //std::cout << "Bounds Hessian error: " << (fH_bounds - bounds_hessian<2>(x, low_bound, up_bound)).norm() << std::endl;
+            //std::cout << fH_bounds.row(0).head(10) << std::endl;
+            //std::cout << bounds_hessian<2>(x, low_bound, up_bound).row(0).head(10) << std::endl;
+
+            const auto st_func = [&](const Eigen::VectorXd& x) -> double {
+                return surface_tension_energy<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
+            };
+
+            Eigen::VectorXd fg_st;
+            fd::finite_gradient(x, st_func, fg_st, accuracy, 1.0e-7);
+            std::cout << "Surface Tension Gradient Error: " << (-b_st - fg_st).array().abs().maxCoeff() << std::endl;
+            std::cout << -b_st.head(10) << std::endl;
+            std::cout << fg_st.head(10) << std::endl;
+
+            Eigen::MatrixXd fH_st;
+            fd::finite_hessian(x, st_func, fH_st, accuracy, 1.0e-5);
+            std::cout << "Surface Tension Hessian error: " << (fH_st - surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B)).norm() << std::endl;
+            std::cout << fH_st.row(0).head(10) << std::endl;
+            std::cout << surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).row(0).head(10) << std::endl;
+
+            const auto scorr = [&](const Eigen::VectorXd& x) -> double {
+                 return spacing_energy_a<2>(x, neighbors, h/2, m, fac, W_dq, k_spacing); 
+             };
+
+            Eigen::VectorXd fg_spacing;
+            fd::finite_gradient(x, scorr, fg_spacing, accuracy, 1.0e-7);
+            std::cout << "Gradient Error: " << (g_spacing - fg_spacing).array().abs().maxCoeff() << std::endl;
+            for (int i = 0; i < 10; i++){
+                std::cout << "fd: " << fg_spacing(i) << " " << g_spacing(i) << std::endl;
+            }
+
+            Eigen::MatrixXd fH_spacing;
+            fd::finite_hessian(x, scorr, fH_spacing, accuracy, 1.0e-5);
+            std::cout << "Hessian error: " << (fH_spacing - H_spacing).norm() << std::endl;
+            std::cout << "------------------" <<std::endl;
+            std::cout << fH_spacing.row(0).head(10) << std::endl; 
+            std::cout << H_spacing.row(0).head(10) << std::endl;
+            
+            // fd check for pressure gradients
+            //const auto psi_func = [&](const Eigen::VectorXd& x) -> double {
+            //    return psi_energy<2>(x, neighbors, h, m, fac, kappa, rho_0 * st_threshold, rho_0);
+            //};
+
+            //VectorXd grad_psi = -b_psi; 
+
+            // Eigen::VectorXd fg_psi;
+            // fd::finite_gradient(x, psi_func, fg_psi, accuracy, 1.0e-8);
+            // std::cout << "Gradient Error: " << (grad_psi - fg_psi).array().abs().maxCoeff() << std::endl;
+            // std::cout << "max value: " << (fg_psi).array().abs().maxCoeff() << " " << grad_psi.array().abs().maxCoeff() << std::endl;
+
+            //std::cout << maxcoef() << std::endl; 
+
+            // Eigen::MatrixXd fg_density;
+            // const auto density_func = [&](const Eigen::VectorXd& x) {
+            //     return calculate_densities<2>(x, neighbors, h, m, fac)/rho_0;
+            // };
+
+            // Eigen::MatrixXd density_jacobian = -B;
+
+            // fd::finite_jacobian(x, density_func, fg_density, accuracy, 1.0e-8);
+            // std::cout << "Density Gradient Error: " << (density_jacobian - fg_density).array().abs().maxCoeff() << std::endl;
+
+            // fd check for bspline (this is 0 for now)
+            //const auto cubic_bspline_func = [&](const Eigen::VectorXd& x) -> double {
+            //    return cubic_bspline(x.norm(), fac);
+            //};
+            //Eigen::VectorXd fd_bspline;
+            //fd::finite_gradient(x, cubic_bspline_func, fd_bspline, accuracy, 1.0e-8);
+            //double bspline_grad = cubic_bspline_derivative(x.norm(), fac);
+            //std::cout << "Cubic Bspline Gradient Error: " << (bspline_grad - fd_bspline.norm())<< std::endl;
+
+            // fd check mollifier
+            // for (int i = 0; i < 100; i += 7){
+            //     std::cout << "mol value: " << mollifier_psi(Jx(i)*rho_0, rho_0 * st_threshold) << std::endl;
+            //     std::cout << "fd: " << (mollifier_psi(Jx(i)*rho_0 + 0.00001,rho_0 * st_threshold) - mollifier_psi(Jx(i)*rho_0-0.00001, rho_0*st_threshold))/0.00002 << std::endl;
+            //     std::cout << "an: " << molli_deriv_psi((Jx(i))*rho_0, rho_0 * st_threshold) << std::endl;
+            // }
         }
 
         // Solve for descent direction
@@ -287,20 +364,7 @@ void animate_implicit<2>(
             
             // Spacing energy
             if (spacing_bool) {
-/////////
-// Spacing energy needs to use new set of neighbors
-/////////
-                // Rebuild spacing energy function
-                std::vector<Eigen::Vector2i> elements;
-                for (int i = 0; i < n; i++){
-                    for (int j = 0; j < neighbors[i].size(); j++){
-                        elements.push_back(Eigen::Vector2i(i,neighbors[i][j]));
-                    }
-                }
-                //auto spacing_energy = spacing_energy_func<2>(x_new, elements, h, m, fac, W_dq, k_spacing);
-                //double e_s = spacing_energy.eval(x_new) * dt_sqr;
-                // auto [e_s, g_spacing, H_spacing] = spacing_energy.eval_with_hessian_proj(x);
-                double e_s = spacing_energy_a<2>(x_new, neighbors, h, m, fac, W_dq, k_spacing) * dt_sqr; 
+                double e_s = spacing_energy_a<2>(x_new, neighbors, h/2, m, fac, W_dq, k_spacing) * dt_sqr; 
                 energy += e_s;
                 std::cout << "\t spacing: " << e_s << " " << std::endl;
             }
@@ -325,6 +389,39 @@ void animate_implicit<2>(
 
         // Perform line search (if enabled) and update variables
         double alpha = 1.0;
+
+        // ccd here
+        x_new = x + alpha * delta_x;
+        
+        if (bounds_bool) {
+            // if x_new is outside of bounds, calculate alpha such that it doesn't go outside
+            MatrixXd::Index maxIndex[1];
+            if(x_new.minCoeff() < low_bound(0)){
+                for (int i = 0; i < n; i++){
+                    alpha= std::min(alpha, (low_bound(0) - x(2*i)) / delta_x(2*i));
+                }
+            }
+            if(x_new.maxCoeff() > up_bound(0)){
+                for (int i = 0; i < n; i++){
+                    alpha= std::min(alpha, (up_bound(0) - x(2*i)) / delta_x(2*i));
+                }
+            }
+            if(x_new.minCoeff() < low_bound(1)){
+                for (int i = 0; i < n; i++){
+                    alpha= std::min(alpha, (low_bound(1) - x(2*i+1)) / delta_x(2*i+1));
+                }
+            }
+            if(x_new.maxCoeff() > up_bound(1)){
+                for (int i = 0; i < n; i++){
+                    alpha= std::min(alpha, (up_bound(1) - x(2*i+1)) / delta_x(2*i+1));
+                }
+            }
+            alpha = alpha * 0.95;
+        } 
+ 
+
+
+
         if (do_line_search) {
             double e_new = energy_func(alpha);
             double e0 = energy_func(0);
@@ -417,5 +514,6 @@ void animate_implicit<3>(
     const bool psi_bool,
     const bool spacing_bool,
     const bool st_bool,
-    const bool primal
+    const bool primal,
+    const double dq
     ){}
