@@ -251,29 +251,30 @@ void animate_implicit<2>(
             std::cout << -b_st.head(10) << std::endl;
             std::cout << fg_st.head(10) << std::endl;
 
-            Eigen::MatrixXd fH_st;
-            fd::finite_hessian(x, st_func, fH_st, accuracy, 1.0e-5);
-            std::cout << "Surface Tension Hessian error: " << (fH_st - surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B)).norm() << std::endl;
-            std::cout << fH_st.row(0).head(10) << std::endl;
-            std::cout << surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).row(0).head(10) << std::endl;
 
-            const auto scorr = [&](const Eigen::VectorXd& x) -> double {
-                 return spacing_energy_a<2>(x, neighbors, h/2, m, fac, W_dq, k_spacing); 
-             };
+            //Eigen::MatrixXd fH_st;
+            //fd::finite_hessian(x, st_func, fH_st, accuracy, 1.0e-5);
+            //std::cout << "Surface Tension Hessian error: " << (fH_st - surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B)).norm() << std::endl;
+            //std::cout << fH_st.row(0).head(10) << std::endl;
+            //std::cout << surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).row(0).head(10) << std::endl;
 
-            Eigen::VectorXd fg_spacing;
-            fd::finite_gradient(x, scorr, fg_spacing, accuracy, 1.0e-7);
-            std::cout << "Gradient Error: " << (g_spacing - fg_spacing).array().abs().maxCoeff() << std::endl;
-            for (int i = 0; i < 10; i++){
-                std::cout << "fd: " << fg_spacing(i) << " " << g_spacing(i) << std::endl;
-            }
+            //const auto scorr = [&](const Eigen::VectorXd& x) -> double {
+            //    return spacing_energy_a<2>(x, neighbors, h/2, m, fac, W_dq, k_spacing); 
+            //};
 
-            Eigen::MatrixXd fH_spacing;
-            fd::finite_hessian(x, scorr, fH_spacing, accuracy, 1.0e-5);
-            std::cout << "Hessian error: " << (fH_spacing - H_spacing).norm() << std::endl;
-            std::cout << "------------------" <<std::endl;
-            std::cout << fH_spacing.row(0).head(10) << std::endl; 
-            std::cout << H_spacing.row(0).head(10) << std::endl;
+            //Eigen::VectorXd fg_spacing;
+            //fd::finite_gradient(x, scorr, fg_spacing, accuracy, 1.0e-7);
+            //std::cout << "Gradient Error: " << (g_spacing - fg_spacing).array().abs().maxCoeff() << std::endl;
+            //for (int i = 0; i < 10; i++){
+            //    std::cout << "fd: " << fg_spacing(i) << " " << g_spacing(i) << std::endl;
+            //}
+
+            //Eigen::MatrixXd fH_spacing;
+            //fd::finite_hessian(x, scorr, fH_spacing, accuracy, 1.0e-5);
+            //std::cout << "Hessian error: " << (fH_spacing - H_spacing).norm() << std::endl;
+            //std::cout << "------------------" <<std::endl;
+            //std::cout << fH_spacing.row(0).head(10) << std::endl; 
+            //std::cout << H_spacing.row(0).head(10) << std::endl;
             
             // fd check for pressure gradients
             //const auto psi_func = [&](const Eigen::VectorXd& x) -> double {
@@ -307,13 +308,15 @@ void animate_implicit<2>(
             //fd::finite_gradient(x, cubic_bspline_func, fd_bspline, accuracy, 1.0e-8);
             //double bspline_grad = cubic_bspline_derivative(x.norm(), fac);
             //std::cout << "Cubic Bspline Gradient Error: " << (bspline_grad - fd_bspline.norm())<< std::endl;
-
-            // fd check mollifier
-            // for (int i = 0; i < 100; i += 7){
-            //     std::cout << "mol value: " << mollifier_psi(Jx(i)*rho_0, rho_0 * st_threshold) << std::endl;
-            //     std::cout << "fd: " << (mollifier_psi(Jx(i)*rho_0 + 0.00001,rho_0 * st_threshold) - mollifier_psi(Jx(i)*rho_0-0.00001, rho_0*st_threshold))/0.00002 << std::endl;
-            //     std::cout << "an: " << molli_deriv_psi((Jx(i))*rho_0, rho_0 * st_threshold) << std::endl;
-            // }
+            //Eigen::VectorXd densities = calculate_densities<2>(x, neighbors, h, m, fac);
+            //double threshold = rho_0 * st_threshold;
+            //double mol_k = 200;
+            //// fd check mollifier
+            //for (int i = 0; i < 100; i +=7 ){
+            //    std::cout << "mol value: " << 1/ (1 + exp(mol_k * (densities(i) - threshold))) << std::endl;
+            //    std::cout << "fd: " <<  (1/ (1 + exp(mol_k * (densities(i)+0.0001 - threshold))) - 1/ (1 + exp(mol_k * (densities(i)-0.0001 - threshold))))/0.0002<< std::endl;
+            //    std::cout << "an: " <<  -mol_k * exp(mol_k * (densities(i) - threshold)) / ((1 + exp(mol_k * (densities(i) - threshold))) * (1 + exp(mol_k * (densities(i) - threshold))))  << std::endl;
+            //}
         }
 
         // Solve for descent direction

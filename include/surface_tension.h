@@ -32,7 +32,6 @@ double surface_tension_energy(
                     mollifier = 0;
                 }
             }
-            mollifier = 1;
             energy += 0.5 * kappa * (densities(i) - densities(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mollifier;
         }
     }
@@ -58,28 +57,40 @@ Eigen::VectorXd surface_tension_gradient(
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(x.size());
     Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
 
-    Eigen::MatrixXd B = -B_sparse.toDense();
+    Eigen::MatrixXd B = -B_sparse.toDense().transpose() * rho_0;
 
     double mol_k = 200;
+    std::cout << B.cols() << B.rows() << std::endl;
+    std::cout << grad.size() << std::endl;
     // Now compute surface tension gradient
+    double threshold_r = rho_0 * threshold;
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
             double mol, mol_grad;
             
-            mol = 1/ (1 + exp(mol_k * (densities(i) - threshold)));
-            mol_grad = -mol_k * exp(mol_k * (densities(i) - threshold)) / ((1 + exp(mol_k * (densities(i) - threshold))) * (1 + exp(mol_k * (densities(i) - threshold))));
+            mol = 1/ (1 + exp(mol_k * (densities(i) - threshold_r)));
+            mol_grad = -mol_k * exp(mol_k * (densities(i) - threshold_r)) / ((1 + exp(mol_k * (densities(i) - threshold_r))) * (1 + exp(mol_k * (densities(i) - threshold_r))));
             if (!smooth_mol){
                 mol = 1; 
                 mol_grad = 0;
-                if (densities(i) > threshold) {
+                if (densities(i) > threshold_r) {
                     mol = 0;
                     mol_grad = 0;
                 }
             } 
-            mol = 1;
-            mol_grad = 0;
+            if (i == 0 && j == 0){
+                std::cout << "Shapes: " << std::endl;
+                std::cout << B.cols() << std::endl;
+                std::cout << B.rows() << std::endl;
+                std::cout << B.col(i).cols() << std::endl;
+                std::cout << B.col(i).rows() << std::endl;
+
+                std::cout << (((B.col(i) - B.col(neighbors[i][j])))).cols() << std::endl;
+                std::cout << (((B.col(i) - B.col(neighbors[i][j])))).rows() << std::endl;
+            }
+
             grad += kappa * (((B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol)
-               + B.col(i) * mol_grad * (densities(i)-densities(j)) * (densities(i)-densities(j)) *0.5);
+                + B.col(i) * mol_grad * (densities(i)-densities(neighbors[i][j])) * (densities(i)-densities(neighbors[i][j])) *0.5);
         }
     }
 

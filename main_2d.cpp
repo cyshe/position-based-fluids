@@ -39,7 +39,7 @@ int numofparticles; //number of particles
 Vector2d lower_bound;
 Vector2d upper_bound;
 
-int iters = 10;
+int iters = 1;
 double dt = 1;
 double k_psi = 1;
 double k_s = 10;
@@ -53,14 +53,14 @@ bool resetA = true;
 void callback() {
 
   static bool is_simulating = false; static bool write_sequence = false;
-  static bool fd_check = false;
+  static bool fd_check = true;
   static bool converge_check = true;
   static bool do_line_search = true;
   static bool bounds = false;
-  static bool smooth_mol = false;
+  static bool smooth_mol = true;
   static bool psi_bool = false;
-  static bool spacing_bool = true;
-  static bool st_bool = false;
+  static bool spacing_bool = false;
+  static bool st_bool = true;
   static bool primal = true;
 
 
