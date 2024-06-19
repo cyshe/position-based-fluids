@@ -1,7 +1,7 @@
 #include "animate_sph.h"
 #include "animate_fluids.h"
 #include "animate_implicit.h"
-#include "animate_lbfgs.h"
+//#include "animate_lbfgs.h"
 #include "polyscope/polyscope.h"
 #include "polyscope/point_cloud.h"
 #include "polyscope/curve_network.h"
@@ -39,8 +39,8 @@ int numofparticles; //number of particles
 Vector2d lower_bound;
 Vector2d upper_bound;
 
-int iters = 1;
-double dt = 1;
+int iters = 10;
+double dt = 0.03;
 double k_psi = 1;
 double k_s = 10;
 double k_st = 10;
@@ -53,19 +53,19 @@ bool resetA = true;
 void callback() {
 
   static bool is_simulating = false; static bool write_sequence = false;
-  static bool fd_check = true;
+  static bool fd_check = false;
   static bool converge_check = true;
   static bool do_line_search = true;
-  static bool bounds = false;
+  static bool bounds = true;
   static bool smooth_mol = true;
   static bool psi_bool = false;
-  static bool spacing_bool = false;
-  static bool st_bool = true;
+  static bool spacing_bool = true;
+  static bool st_bool = false;
   static bool primal = true;
 
 
   static int frame = 0;
-  static double gravity = 0.0;
+  static double gravity = -0.005;
   static double dq = 1.0;
 
   ImGui::PushItemWidth(100);
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]){
   polyscope::state::userCallback = callback;
 
   // Init bounding box
-  lower_bound << -1.05, -1.05;
+  lower_bound << -1.05, -0.35;
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions

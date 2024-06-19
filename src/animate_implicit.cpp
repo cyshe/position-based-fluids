@@ -1,3 +1,4 @@
+#pragma once
 #include <igl/signed_distance.h>
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -207,7 +208,7 @@ void animate_implicit<2>(
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
             b += dt * dt * b_psi;
-            std::cout << "b_psi norm: " << b_psi.norm() << std::endl;
+            //std::cout << "b_psi norm: " << b_psi.norm() << std::endl;
         }
         if (spacing_bool) {
             b_spacing = -g_spacing;
@@ -362,14 +363,14 @@ void animate_implicit<2>(
                 J_new = J + alpha * delta_J;
                 double e_c = lambda.dot(J_new - (calculate_densities<2>(x_new, neighbors, h, m, fac) / rho_0)) * dt_sqr;
                 energy += e_c;
-                std::cout << "\t e_c " << e_c << std::endl;
+                //std::cout << "\t e_c " << e_c << std::endl;
             }
             
             // Spacing energy
             if (spacing_bool) {
                 double e_s = spacing_energy_a<2>(x_new, neighbors, h/2, m, fac, W_dq, k_spacing) * dt_sqr; 
                 energy += e_s;
-                std::cout << "\t spacing: " << e_s << " " << std::endl;
+                //std::cout << "\t spacing: " << e_s << " " << std::endl;
             }
 
             // Surface tension energy
@@ -377,16 +378,16 @@ void animate_implicit<2>(
                 double e_st = surface_tension_energy<2>(x_new, neighbors, h, m, fac, k_st,
                     rho_0 * st_threshold, smooth_mol) * dt_sqr;
                 energy += e_st;
-                std::cout << "\t st: " << e_st << std::endl;
+                //std::cout << "\t st: " << e_st << std::endl;
             }
 
             // Boundary energy
             if (bounds_bool) {
                 double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
                 energy += e_bound;
-                std::cout << "\t bounds: " << e_bound << std::endl;
+                //std::cout << "\t bounds: " << e_bound << std::endl;
             }
-            std::cout << "energy: " << energy << std::endl;
+            //std::cout << "energy: " << energy << std::endl;
             return energy;
         };
 
@@ -403,26 +404,36 @@ void animate_implicit<2>(
                 for (int i = 0; i < n; i++){
                     alpha= std::min(alpha, (low_bound(0) - x(2*i)) / delta_x(2*i));
                 }
+                alpha = alpha * 0.95;
             }
             if(x_new.maxCoeff() > up_bound(0)){
                 for (int i = 0; i < n; i++){
                     alpha= std::min(alpha, (up_bound(0) - x(2*i)) / delta_x(2*i));
                 }
+                alpha = alpha * 0.95;
             }
             if(x_new.minCoeff() < low_bound(1)){
                 for (int i = 0; i < n; i++){
                     alpha= std::min(alpha, (low_bound(1) - x(2*i+1)) / delta_x(2*i+1));
                 }
+                alpha = alpha * 0.95;
             }
             if(x_new.maxCoeff() > up_bound(1)){
                 for (int i = 0; i < n; i++){
                     alpha= std::min(alpha, (up_bound(1) - x(2*i+1)) / delta_x(2*i+1));
                 }
+                alpha = alpha * 0.95;
             }
-            alpha = alpha * 0.95;
+            
         } 
  
+        double residual = delta_x.lpNorm<Eigen::Infinity>() / dt;
+        std::cout << "iteration: " << it << ", residual: " << residual << std::endl;
 
+        if (residual < 5e-7 && converge_check) {
+            std::cout << "converged" << std::endl;
+            break;
+        }
 
 
         if (do_line_search) {
@@ -441,7 +452,7 @@ void animate_implicit<2>(
                 es.compute(MatrixXd(A));
                 std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
                 // std::cout << delta_X << std::endl;
-                exit(1);
+                //exit(1);
             }
             std::cout << "e0: " << e0 << " enew: " << e_new << std::endl;
         }
@@ -465,13 +476,7 @@ void animate_implicit<2>(
             grad_st(i, 1) = b_st(2*i+1);
         }
 
-        double residual = delta_x.lpNorm<Eigen::Infinity>() / dt;
-        std::cout << "iteration: " << it << ", residual: " << residual << std::endl;
-
-        if (residual < 2e-3 && converge_check) {
-            std::cout << "converged" << std::endl;
-            break;
-        }
+        
     }        
 
     // Turn x back into a field

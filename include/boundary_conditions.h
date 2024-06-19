@@ -5,11 +5,20 @@
 #include "calculate_densities.h"
 #include <ipc/ipc.hpp>
 #include <ipc/utils/eigen_ext.hpp>
-#include <iostream> // remove
+
+#include <ipc/utils/logger.hpp>
+#include <iostream>
 #include <ipc/distance/point_edge.hpp>
 #include <ipc/distance/edge_edge.hpp>
 #include <ipc/distance/edge_edge_mollifier.hpp>
 #include <ipc/barrier/barrier.hpp>
+
+#include <ipc/candidates/vertex_vertex.hpp>
+#include <ipc/candidates/edge_vertex.hpp>
+#include <ipc/candidates/face_vertex.hpp>
+#include <ipc/candidates/edge_face.hpp>
+#include <ipc/utils/save_obj.hpp>
+
 
 template <int dim>
 double bounds_energy(
@@ -127,13 +136,13 @@ Eigen::MatrixXd bounds_hessian(
             }
         
             d = ipc::point_edge_distance(point, e0, e1);
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_gradient(d, 0.2)
-                * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0);
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(ipc::barrier_gradient(d, 0.2)
+                * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0), ipc::PSDProjectionMethod::CLAMP);
 
 
             Eigen::Vector<double, dim> g = ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0);
                  
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::barrier_hessian(d, 0.2) * (g * g.transpose());
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(ipc::barrier_hessian(d, 0.2) * (g * g.transpose()), ipc::PSDProjectionMethod::CLAMP);
         }   
     }
     
