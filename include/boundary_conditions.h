@@ -113,6 +113,7 @@ Eigen::MatrixXd bounds_hessian(
     Eigen::Vector2d e0, e1;
     Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(x.size(), x.size());
     double d = 0.0;
+    Eigen::Matrix<double, dim, dim> hess = Eigen::Matrix<double, dim, dim>::Zero();
 
     for (int i = 0; i < n; i++){
         const auto & point = x.template segment<dim>(dim * i);
@@ -136,13 +137,17 @@ Eigen::MatrixXd bounds_hessian(
             }
         
             d = ipc::point_edge_distance(point, e0, e1);
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(ipc::barrier_gradient(d, 0.2)
-                * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0), ipc::PSDProjectionMethod::CLAMP);
+
+            hess = ipc::barrier_gradient(d, 0.2) * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0);
+
+            
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(hess);
 
 
             Eigen::Vector<double, dim> g = ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0);
                  
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(ipc::barrier_hessian(d, 0.2) * (g * g.transpose()), ipc::PSDProjectionMethod::CLAMP);
+            hess = ipc::barrier_hessian(d, 0.2) * (g * g.transpose());
+            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(hess);
         }   
     }
     

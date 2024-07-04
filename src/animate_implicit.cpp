@@ -402,29 +402,43 @@ void animate_implicit<2>(
             MatrixXd::Index maxIndex[1];
             if(x_new.minCoeff() < low_bound(0)){
                 for (int i = 0; i < n; i++){
-                    alpha= std::min(alpha, (low_bound(0) - x(2*i)) / delta_x(2*i));
+                    if (low_bound(0) > x(2*i)){
+                        alpha= std::min(alpha, (low_bound(0) - x(2*i)) / delta_x(2*i));
+                    }
                 }
                 alpha = alpha * 0.95;
             }
             if(x_new.maxCoeff() > up_bound(0)){
                 for (int i = 0; i < n; i++){
-                    alpha= std::min(alpha, (up_bound(0) - x(2*i)) / delta_x(2*i));
+                    if (up_bound(0) < x(2*i)){
+                        alpha= std::min(alpha, (up_bound(0) - x(2*i)) / delta_x(2*i));
+                    }
                 }
                 alpha = alpha * 0.95;
             }
             if(x_new.minCoeff() < low_bound(1)){
                 for (int i = 0; i < n; i++){
-                    alpha= std::min(alpha, (low_bound(1) - x(2*i+1)) / delta_x(2*i+1));
+                    if (low_bound(1) > x(2*i+1)){
+                        alpha= std::min(alpha, (low_bound(1) - x(2*i+1))/ delta_x(2*i+1));
+                        std::cout << low_bound(1) << x(2*i+1) << delta_x(2*i+1) << (low_bound(1) - x(2*i+1))/ delta_x(2*i+1) << alpha << std::endl;
+                    }
                 }
-                alpha = alpha * 0.95;
-            }
-            if(x_new.maxCoeff() > up_bound(1)){
-                for (int i = 0; i < n; i++){
-                    alpha= std::min(alpha, (up_bound(1) - x(2*i+1)) / delta_x(2*i+1));
-                }
+                std::cout << "alpha (3): " << alpha << std::endl;
                 alpha = alpha * 0.95;
             }
             
+            if(x_new.maxCoeff() > up_bound(1)){
+                for (int i = 0; i < n; i++){
+                    if (up_bound(1) < x(2*i+1)){
+                        alpha= std::min(alpha, (up_bound(1) - x(2*i+1)) / delta_x(2*i+1));
+                    }
+                }
+            
+                std::cout << "alpha (4): " << alpha << std::endl;
+                alpha = alpha * 0.95;
+            }
+            
+            //std::cout << "alpha (ccd): " << alpha << std::endl;
         } 
  
         double residual = delta_x.lpNorm<Eigen::Infinity>() / dt;
@@ -452,7 +466,7 @@ void animate_implicit<2>(
                 es.compute(MatrixXd(A));
                 std::cout << "The eigenvalues of A are: " << es.eigenvalues().transpose().head(10) << std::endl;
                 // std::cout << delta_X << std::endl;
-                //exit(1);
+                exit(1);
             }
             std::cout << "e0: " << e0 << " enew: " << e_new << std::endl;
         }
@@ -476,7 +490,11 @@ void animate_implicit<2>(
             grad_st(i, 1) = b_st(2*i+1);
         }
 
-        
+        if (it == iters - 1){
+            std::cout << "not converged" << std::endl;
+            std::cout << "residual: " << residual << std::endl;
+            exit(1);
+        } 
     }        
 
     // Turn x back into a field

@@ -40,7 +40,7 @@ Vector2d lower_bound;
 Vector2d upper_bound;
 
 int iters = 10;
-double dt = 0.03;
+double dt = 0.001;
 double k_psi = 1;
 double k_s = 10;
 double k_st = 10;
@@ -60,7 +60,7 @@ void callback() {
   static bool smooth_mol = true;
   static bool psi_bool = false;
   static bool spacing_bool = true;
-  static bool st_bool = false;
+  static bool st_bool = true;
   static bool primal = true;
 
 
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]){
   polyscope::state::userCallback = callback;
 
   // Init bounding box
-  lower_bound << -1.05, -0.35;
+  lower_bound << -1.05, -0.55;
   upper_bound << 4.366, 2.0; 
 
   // Initialize positions

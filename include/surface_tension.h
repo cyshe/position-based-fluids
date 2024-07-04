@@ -4,6 +4,8 @@
 #include "cubic_bspline.h"
 #include "calculate_densities.h"
 
+#include <ipc/ipc.hpp>
+#include <ipc/utils/eigen_ext.hpp>
 
 template <int dim>
 double surface_tension_energy(
@@ -60,8 +62,8 @@ Eigen::VectorXd surface_tension_gradient(
     Eigen::MatrixXd B = -B_sparse.toDense().transpose() * rho_0;
 
     double mol_k = 200;
-    std::cout << B.cols() << B.rows() << std::endl;
-    std::cout << grad.size() << std::endl;
+    //std::cout << B.cols() << B.rows() << std::endl;
+    //std::cout << grad.size() << std::endl;
     // Now compute surface tension gradient
     double threshold_r = rho_0 * threshold;
     for (int i = 0; i < n; i++){
@@ -78,6 +80,7 @@ Eigen::VectorXd surface_tension_gradient(
                     mol_grad = 0;
                 }
             } 
+            /*
             if (i == 0 && j == 0){
                 std::cout << "Shapes: " << std::endl;
                 std::cout << B.cols() << std::endl;
@@ -88,7 +91,7 @@ Eigen::VectorXd surface_tension_gradient(
                 std::cout << (((B.col(i) - B.col(neighbors[i][j])))).cols() << std::endl;
                 std::cout << (((B.col(i) - B.col(neighbors[i][j])))).rows() << std::endl;
             }
-
+            */
             grad += kappa * (((B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol)
                 + B.col(i) * mol_grad * (densities(i)-densities(neighbors[i][j])) * (densities(i)-densities(neighbors[i][j])) *0.5);
         }
@@ -116,6 +119,9 @@ Eigen::MatrixXd surface_tension_hessian(
         return grad * grad.transpose();
     }
     
-    return grad * grad.transpose()/kappa;
+
+    Eigen::MatrixXd hess = grad * grad.transpose()/kappa;
+
+    return hess;
 };
 
