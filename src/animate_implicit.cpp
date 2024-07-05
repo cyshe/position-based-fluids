@@ -241,7 +241,7 @@ void animate_implicit<2>(
             //std::cout << "Bounds Hessian error: " << (fH_bounds - bounds_hessian<2>(x, low_bound, up_bound)).norm() << std::endl;
             //std::cout << fH_bounds.row(0).head(10) << std::endl;
             //std::cout << bounds_hessian<2>(x, low_bound, up_bound).row(0).head(10) << std::endl;
-
+            /*
             const auto st_func = [&](const Eigen::VectorXd& x) -> double {
                 return surface_tension_energy<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
             };
@@ -251,6 +251,7 @@ void animate_implicit<2>(
             std::cout << "Surface Tension Gradient Error: " << (-b_st - fg_st).array().abs().maxCoeff() << std::endl;
             std::cout << -b_st.head(10) << std::endl;
             std::cout << fg_st.head(10) << std::endl;
+            */
 
 
             //Eigen::MatrixXd fH_st;
@@ -291,15 +292,15 @@ void animate_implicit<2>(
 
             //std::cout << maxcoef() << std::endl; 
 
-            // Eigen::MatrixXd fg_density;
-            // const auto density_func = [&](const Eigen::VectorXd& x) {
-            //     return calculate_densities<2>(x, neighbors, h, m, fac)/rho_0;
-            // };
+            Eigen::MatrixXd fg_density;
+            const auto density_func = [&](const Eigen::VectorXd& x) {
+                return calculate_densities<2>(x, neighbors, h, m, fac)/rho_0;
+            };
 
-            // Eigen::MatrixXd density_jacobian = -B;
+            Eigen::MatrixXd density_jacobian = -B;
 
-            // fd::finite_jacobian(x, density_func, fg_density, accuracy, 1.0e-8);
-            // std::cout << "Density Gradient Error: " << (density_jacobian - fg_density).array().abs().maxCoeff() << std::endl;
+            fd::finite_jacobian(x, density_func, fg_density, accuracy, 1.0e-8);
+            std::cout << "Density Gradient Error: " << (density_jacobian - fg_density).array().abs().maxCoeff() << std::endl;
 
             // fd check for bspline (this is 0 for now)
             //const auto cubic_bspline_func = [&](const Eigen::VectorXd& x) -> double {
@@ -493,7 +494,7 @@ void animate_implicit<2>(
         if (it == iters - 1){
             std::cout << "not converged" << std::endl;
             std::cout << "residual: " << residual << std::endl;
-            exit(1);
+            //exit(1);
         } 
     }        
 

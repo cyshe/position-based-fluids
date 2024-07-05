@@ -106,7 +106,7 @@ Eigen::MatrixXd spacing_hessian(
     const double kappa
 ){
     int n = x.size() / 2;
-    Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(n * 2, n * 2);
+    Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(n * dim, n * dim);
     int idx = 0;
     double r = 0.0;
     double Wij = 0.0;
@@ -116,16 +116,16 @@ Eigen::MatrixXd spacing_hessian(
     for (int i = 0; i < neighbors.size(); i++){
         for (int j = 0; j < neighbors[i].size(); j++){
             idx = neighbors[i][j];
-            xi = x.segment<dim>(2*i);
-            xj = x.segment<dim>(2*idx);
+            xi = x.segment<dim>(dim*i);
+            xj = x.segment<dim>(dim*idx);
             r = (xi - xj).norm() / h;
             Wij = cubic_bspline(r, m*fac);
             dWij = cubic_bspline_derivative(r, m*fac);
             ddWij = cubic_bspline_second_derivative(r, m*fac);
-            hessian.block<dim, dim>(2*i, 2*i) += kappa * dWij * dWij / (h * r) * Eigen::Matrix2d::Identity();
-            hessian.block<dim, dim>(2*i, 2*idx) -= kappa * dWij * dWij / (h * r) * Eigen::Matrix2d::Identity();
-            hessian.block<dim, dim>(2*i, 2*i) += kappa * (Wij - W_dq) * ddWij * (xi - xj) * (xi - xj).transpose() / (h * r * r);
-            hessian.block<dim, dim>(2*i, 2*idx) -= kappa * (Wij - W_dq) * ddWij * (xi - xj) * (xi - xj).transpose() / (h * r * r);
+            hessian.block<dim, dim>(dim*i, dim*i) += kappa * dWij * dWij / (h * r) * Eigen::Matrix2d::Identity();
+            hessian.block<dim, dim>(dim*i, dim*idx) -= kappa * dWij * dWij / (h * r) * Eigen::Matrix2d::Identity();
+            hessian.block<dim, dim>(dim*i, dim*i) += kappa * (Wij - W_dq) * ddWij * (xi - xj) * (xi - xj).transpose() / (h * r * r);
+            hessian.block<dim, dim>(dim*i, dim*idx) -= kappa * (Wij - W_dq) * ddWij * (xi - xj) * (xi - xj).transpose() / (h * r * r);
         }
     }
     return hessian;

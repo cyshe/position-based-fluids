@@ -39,11 +39,11 @@ int numofparticles; //number of particles
 Vector2d lower_bound;
 Vector2d upper_bound;
 
-int iters = 10;
+int iters = 100;
 double dt = 0.001;
 double k_psi = 1;
 double k_s = 10;
-double k_st = 10;
+double k_st = 0.1;
 double st_threshold = 2.0;
 double rho_0 = 3.6;
 double h = 0.2;
@@ -65,7 +65,7 @@ void callback() {
 
 
   static int frame = 0;
-  static double gravity = -0.005;
+  static double gravity = -0.05;
   static double dq = 1.0;
 
   ImGui::PushItemWidth(100);

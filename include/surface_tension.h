@@ -22,7 +22,7 @@ double surface_tension_energy(
     Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
 
     double energy = 0.0;
-    double mol_k = 200; // kappa in smooth mollifier exponential 
+    double mol_k = 1000; // kappa in smooth mollifier exponential 
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
             double mollifier;
@@ -61,7 +61,7 @@ Eigen::VectorXd surface_tension_gradient(
 
     Eigen::MatrixXd B = -B_sparse.toDense().transpose() * rho_0;
 
-    double mol_k = 200;
+    double mol_k = 1000;
     //std::cout << B.cols() << B.rows() << std::endl;
     //std::cout << grad.size() << std::endl;
     // Now compute surface tension gradient
@@ -121,6 +121,21 @@ Eigen::MatrixXd surface_tension_hessian(
     
 
     Eigen::MatrixXd hess = grad * grad.transpose()/kappa;
+    /*
+    Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(x.size(), x.size());
+    int idx = 0;
+    for (int i = 0; i < neighbors.size(); i+=dim){
+        for (int j = 0; j < neighbors[i].size(); j++){
+            idx = neighbors[i][j];
+
+
+            hessian.block<dim, dim>(dim*i, dim*i) += (B.col(i) - B.col(idx)) * (B.col(i) - B.col(idx)).transpose();
+        }
+    }
+    */
+
+
+
 
     return hess;
 };

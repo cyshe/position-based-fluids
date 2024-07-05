@@ -52,6 +52,28 @@ Eigen::VectorXd calculate_densities(
     return densities;
 };
 
+/*
+template <int dim>
+Matrix<double, dim*dim, 1> density_hessian(
+    const Matrix<double, dim, 1>& xi,
+    const Matrix<double, dim, 1>& xj,
+    const double h,
+    const double m,
+    const double fac
+){
+    Matrix<double, dim*dim, 1> hess;
+    Matrix<double, dim, 1> xij = xj - xi;
+    double r = xij.norm() / h;
+    double deriv = cubic_bspline_derivative(r, m*fac);
+    double deriv2 = cubic_bspline_hessian(r, m*fac);
+
+    Vector2d dphi_dx = deriv * xij / r / h; // direction
+    Vector2d d2phi_dx2 = deriv2 * xij / r / h / h; // direction
+    hess.template segment<dim>(0) = -d2phi_dx2;
+    hess.template segment<dim>(dim) = d2phi_dx2;
+    return hess;
+}
+*/
 
 // explicit instantiations at bottom of file
 template Matrix<double, 2*2, 1> density_gradient<2>(
