@@ -40,7 +40,7 @@ Vector2d lower_bound;
 Vector2d upper_bound;
 
 int iters = 100;
-double dt = 0.001;
+double dt = 0.01;
 double k_psi = 1;
 double k_s = 10;
 double k_st = 0.1;

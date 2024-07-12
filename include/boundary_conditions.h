@@ -24,7 +24,9 @@ template <int dim>
 double bounds_energy(
     const Eigen::VectorXd & x,
     const Eigen::Matrix<double, dim, 1> & lower_bound,
-    const Eigen::Matrix<double, dim, 1> & upper_bound
+    const Eigen::Matrix<double, dim, 1> & upper_bound,
+    const double barrier_width,
+    const double kappa
 ){
     int n = x.size() / dim;
     Eigen::Vector2d e0, e1;
@@ -54,7 +56,7 @@ double bounds_energy(
             }
 
             d = ipc::point_edge_distance(point, e0, e1);
-            energy += ipc::barrier(d, 0.2);
+            energy += kappa * ipc::barrier(d, barrier_width);
         }
     }
     return energy;
@@ -65,7 +67,9 @@ template <int dim>
 Eigen::VectorXd bounds_gradient(
     Eigen::VectorXd & x,
     const Eigen::Matrix<double, dim, 1> & lower_bound,
-    const Eigen::Matrix<double, dim, 1> & upper_bound
+    const Eigen::Matrix<double, dim, 1> & upper_bound,
+    const double barrier_width,
+    const double kappa
 ){
     int n = x.size() / dim;
     Eigen::Vector2d e0, e1;
@@ -96,9 +100,11 @@ Eigen::VectorXd bounds_gradient(
             d = ipc::point_edge_distance(point, e0, e1);
             grad.template segment<dim>(dim * i) += 
                 ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0) * 
-                ipc::barrier_gradient(d, 0.2);
+                ipc::barrier_gradient(d, barrier_width);
         }
     }
+
+    grad = kappa * grad;
 
     return grad;
 };
@@ -107,7 +113,9 @@ template <int dim>
 Eigen::MatrixXd bounds_hessian(
     Eigen::VectorXd & x,
     const Eigen::Matrix<double, dim, 1> & lower_bound,
-    const Eigen::Matrix<double, dim, 1> & upper_bound
+    const Eigen::Matrix<double, dim, 1> & upper_bound,
+    const double barrier_width,
+    const double kappa
 ){
     int n = x.size() / dim;
     Eigen::Vector2d e0, e1;
@@ -146,10 +154,11 @@ Eigen::MatrixXd bounds_hessian(
 
             Eigen::Vector<double, dim> g = ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0);
                  
-            hess = ipc::barrier_hessian(d, 0.2) * (g * g.transpose());
+            hess = ipc::barrier_hessian(d, barrier_width) * (g * g.transpose());
             hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(hess);
         }   
     }
-    
+    hessian = kappa * hessian;
+
     return hessian;
 };

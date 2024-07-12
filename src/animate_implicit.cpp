@@ -70,6 +70,9 @@ void animate_implicit<2>(
 
     std::ofstream output_file("output.txt", std::ios::app);
 
+    double k_barrier = 1000.0;
+    double barrier_width = 0.2;
+
     const int n = numofparticles;
     const double m = 1;
     const double vol = 1;//m/rho_0;
@@ -195,7 +198,7 @@ void animate_implicit<2>(
             A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).sparseView() * dt_sqr;
         }
         if (bounds_bool) {
-            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView() * dt_sqr;
+            A += bounds_hessian<2>(x, low_bound, up_bound, barrier_width, k_barrier).sparseView() * dt_sqr;
         }
         
         VectorXd b_inertial = -M * (x - x_hat);
@@ -219,7 +222,7 @@ void animate_implicit<2>(
             b += dt * dt * b_st;
         }
         if (bounds_bool) {
-            b_bounds = -bounds_gradient<2>(x, low_bound, up_bound);
+            b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, barrier_width, k_barrier);
             b += dt * dt * b_bounds;
         }
 
@@ -238,10 +241,10 @@ void animate_implicit<2>(
 
             //Eigen::MatrixXd fH_bounds;
             //fd::finite_hessian(x, bound_func, fH_bounds, accuracy, 1.0e-5);
-            //std::cout << "Bounds Hessian error: " << (fH_bounds - bounds_hessian<2>(x, low_bound, up_bound)).norm() << std::endl;
+            //std::cout << "Bounds Hessian error: " << (fH_bounds - bounds_hessian<2>(x, low_bound, up_bound, barrier_width, k_barrier)).norm() << std::endl;
             //std::cout << fH_bounds.row(0).head(10) << std::endl;
-            //std::cout << bounds_hessian<2>(x, low_bound, up_bound).row(0).head(10) << std::endl;
-            /*
+            //std::cout << bounds_hessian<2>(x, low_bound, up_bound, barrier_width, k_barrier).row(0).head(10) << std::endl;
+
             const auto st_func = [&](const Eigen::VectorXd& x) -> double {
                 return surface_tension_energy<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
             };
@@ -251,7 +254,6 @@ void animate_implicit<2>(
             std::cout << "Surface Tension Gradient Error: " << (-b_st - fg_st).array().abs().maxCoeff() << std::endl;
             std::cout << -b_st.head(10) << std::endl;
             std::cout << fg_st.head(10) << std::endl;
-            */
 
 
             //Eigen::MatrixXd fH_st;
@@ -292,15 +294,15 @@ void animate_implicit<2>(
 
             //std::cout << maxcoef() << std::endl; 
 
-            Eigen::MatrixXd fg_density;
-            const auto density_func = [&](const Eigen::VectorXd& x) {
-                return calculate_densities<2>(x, neighbors, h, m, fac)/rho_0;
-            };
+            // Eigen::MatrixXd fg_density;
+            // const auto density_func = [&](const Eigen::VectorXd& x) {
+            //     return calculate_densities<2>(x, neighbors, h, m, fac)/rho_0;
+            // };
 
-            Eigen::MatrixXd density_jacobian = -B;
+            // Eigen::MatrixXd density_jacobian = -B;
 
-            fd::finite_jacobian(x, density_func, fg_density, accuracy, 1.0e-8);
-            std::cout << "Density Gradient Error: " << (density_jacobian - fg_density).array().abs().maxCoeff() << std::endl;
+            // fd::finite_jacobian(x, density_func, fg_density, accuracy, 1.0e-8);
+            // std::cout << "Density Gradient Error: " << (density_jacobian - fg_density).array().abs().maxCoeff() << std::endl;
 
             // fd check for bspline (this is 0 for now)
             //const auto cubic_bspline_func = [&](const Eigen::VectorXd& x) -> double {
@@ -384,7 +386,7 @@ void animate_implicit<2>(
 
             // Boundary energy
             if (bounds_bool) {
-                double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
+                double e_bound = bounds_energy<2>(x_new, low_bound, up_bound, barrier_width, k_barrier) *dt_sqr;
                 energy += e_bound;
                 //std::cout << "\t bounds: " << e_bound << std::endl;
             }
@@ -494,7 +496,12 @@ void animate_implicit<2>(
         if (it == iters - 1){
             std::cout << "not converged" << std::endl;
             std::cout << "residual: " << residual << std::endl;
-            //exit(1);
+            double curr_min = 10;
+            for (int i = 0; i < n; i++){
+                if (x(2*i+1) < curr_min) curr_min = x(2*i+1);
+            }
+            std::cout << "min y: " << curr_min << std::endl;
+            exit(1);
         } 
     }        
 

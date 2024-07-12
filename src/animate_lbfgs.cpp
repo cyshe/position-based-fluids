@@ -70,6 +70,9 @@ void animate_lbfgs<2>(
 
     std::ofstream output_file("output.txt", std::ios::app);
 
+    double k_barrier = 1.0;
+    double barrier_width = 0.2;
+
     const int n = numofparticles;
     const double m = 1;
     const double vol = 1;//m/rho_0;
@@ -198,7 +201,7 @@ void animate_lbfgs<2>(
             A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).sparseView() *dt_sqr;
         }
         if (bounds_bool) {
-            A += bounds_hessian<2>(x, low_bound, up_bound).sparseView() *dt_sqr;
+            A += bounds_hessian<2>(x, low_bound, up_bound, barrier_width, k_barrier).sparseView() *dt_sqr;
         }
     }
     SimplicialLDLT<SparseMatrix<double>> solver;
@@ -248,7 +251,7 @@ void animate_lbfgs<2>(
             b += dt * dt * b_st;
         }
         if (bounds_bool) {
-            b_bounds = bounds_gradient<2>(x, low_bound, up_bound);
+            b_bounds = bounds_gradient<2>(x, low_bound, up_bound, barrier_width, k_barrier);
             b += dt * dt * b_bounds;
         }
 
@@ -372,7 +375,7 @@ void animate_lbfgs<2>(
                 rho_0 * st_threshold, smooth_mol) * dt_sqr;
 
             // Boundary energy
-            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound) *dt_sqr;
+            double e_bound = bounds_energy<2>(x_new, low_bound, up_bound, barrier_width, k_barrier) *dt_sqr;
 
             return e_i + e_psi + e_s + e_st + e_bound;
         };

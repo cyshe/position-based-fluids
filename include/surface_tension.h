@@ -121,15 +121,47 @@ Eigen::MatrixXd surface_tension_hessian(
     
 
     Eigen::MatrixXd hess = grad * grad.transpose()/kappa;
-    /*
+    /* 
     Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(x.size(), x.size());
     int idx = 0;
     for (int i = 0; i < neighbors.size(); i+=dim){
         for (int j = 0; j < neighbors[i].size(); j++){
             idx = neighbors[i][j];
+            double mol_i, mol_grad_i, mol_grad2_i, mol_j, mol_grad_j, mol_grad2_j;
+            mol_i = 1/ (1 + exp(mol_k * (densities(i) - threshold_r)));
+            mol_grad_i = -mol_k * exp(mol_k * (densities(i) - threshold_r)) / ((1 + exp(mol_k * (densities(i) - threshold_r))) * (1 + exp(mol_k * (densities(i) - threshold_r))));
+            if (!smooth_mol){
+                mol_i = 1; 
+                mol_grad_i = 0;
+                if (densities(i) > threshold_r) {
+                    mol_i = 0;
+                    mol_grad_i = 0;
+                }
+            }
+
+            mol_j = 1/ (1 + exp(mol_k * (densities(idx) - threshold_r)));
+            mod_grad_j = -mol_k * exp(mol_k * (densities(idx) - threshold_r)) / ((1 + exp(mol_k * (densities(idx) - threshold_r))) * (1 + exp(mol_k * (densities(idx) - threshold_r))));
+            if (!smooth_mol){
+                mol_j = 1; 
+                mol_grad_j = 0;
+                if (densities(idx) > threshold_r) {
+                    mol_j = 0;
+                    mol_grad_j = 0;
+                }
+            }
 
 
-            hessian.block<dim, dim>(dim*i, dim*i) += (B.col(i) - B.col(idx)) * (B.col(i) - B.col(idx)).transpose();
+            hessian.block<dim, dim>(dim*i, dim*i) += (//dB here * (densities(i) - densities(j)) * mol_i
+                + (B.col(i) - B.col(idx)) * (B.col(i) - B.col(idx)) * mol_i
+                + (B.col(i) - B.col(idx)) * (densities(i) - densities(idx)) * mol_grad_i
+                +  dB.col(i) * mol_grad_i * (densities(i)-densities(idx)) * (densities(i)-densities(idx)) * 0.5
+                +  B.col(i) * B.col(i) * mol_grad2_i * (densities(i)-densities(idx)) * (densities(i)-densities(idx)) * 0.5
+                +  B.col(i) * mol_grad_i * (B.col(i) - B.col(idx)) * (densities(i)-densities(neighbors[i][j]))
+                );
+
+            hessian.block<dim, dim>(dim*i, dim*idx) += ;
+            hessian.block<dim, dim>(dim*idx, dim*i) += ;
+            hessian.block<dim, dim>(dim*idx, dim*idx) += ;
         }
     }
     */
