@@ -40,7 +40,7 @@ Vector2d lower_bound;
 Vector2d upper_bound;
 
 int iters = 100;
-double dt = 0.01;
+double dt = 0.005;
 double k_psi = 1;
 double k_s = 10;
 double k_st = 0.1;
@@ -53,7 +53,7 @@ bool resetA = true;
 void callback() {
 
   static bool is_simulating = false; static bool write_sequence = false;
-  static bool fd_check = false;
+  static bool fd_check = true;
   static bool converge_check = true;
   static bool do_line_search = true;
   static bool bounds = true;
@@ -65,7 +65,7 @@ void callback() {
 
 
   static int frame = 0;
-  static double gravity = -0.05;
+  static double gravity = -0.5;
   static double dq = 1.0;
 
   ImGui::PushItemWidth(100);

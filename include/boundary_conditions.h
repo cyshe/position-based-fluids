@@ -146,16 +146,18 @@ Eigen::MatrixXd bounds_hessian(
         
             d = ipc::point_edge_distance(point, e0, e1);
 
-            hess = ipc::barrier_gradient(d, 0.2) * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0);
+            hess = ipc::barrier_gradient(d, barrier_width) * ipc::point_edge_distance_hessian(point, e0, e1).template block<dim, dim>(0, 0);
 
             
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(hess);
+            //hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(hess);
+            hessian.block<dim, dim>(dim*i, dim*i) += hess;
 
 
             Eigen::Vector<double, dim> g = ipc::point_edge_distance_gradient(point, e0, e1).template segment<dim>(0);
                  
             hess = ipc::barrier_hessian(d, barrier_width) * (g * g.transpose());
-            hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(hess);
+            //hessian.block<dim, dim>(dim*i, dim*i) += ipc::project_to_psd(hess);
+            hessian.block<dim, dim>(dim*i, dim*i) += hess;
         }   
     }
     hessian = kappa * hessian;

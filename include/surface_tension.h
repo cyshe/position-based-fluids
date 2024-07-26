@@ -23,8 +23,10 @@ double surface_tension_energy(
 
     double energy = 0.0;
     double mol_k = 1000; // kappa in smooth mollifier exponential 
-    for (int i = 0; i < n; i++){
-        for (int j = 0; j < neighbors[i].size(); j++){
+    //for (int i = 0; i < n; i++){
+    //    for (int j = 0; j < neighbors[i].size(); j++){
+    for (int i = 0; i < 2; i++){
+        for (int j = 0; j < 2; j++){
             double mollifier;
            
             mollifier = 1/ (1 + exp(mol_k * (densities(i) - threshold)));
@@ -34,6 +36,10 @@ double surface_tension_energy(
                     mollifier = 0;
                 }
             }
+            mollifier = 1;
+                if (densities(i) > threshold) {
+                    mollifier = 0;
+                }
             energy += 0.5 * kappa * (densities(i) - densities(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mollifier;
         }
     }
@@ -66,8 +72,8 @@ Eigen::VectorXd surface_tension_gradient(
     //std::cout << grad.size() << std::endl;
     // Now compute surface tension gradient
     double threshold_r = rho_0 * threshold;
-    for (int i = 0; i < n; i++){
-        for (int j = 0; j < neighbors[i].size(); j++){
+    for (int i = 0; i < 2; i++){
+        for (int j = 0; j < 2; j++){
             double mol, mol_grad;
             
             mol = 1/ (1 + exp(mol_k * (densities(i) - threshold_r)));
@@ -79,7 +85,13 @@ Eigen::VectorXd surface_tension_gradient(
                     mol = 0;
                     mol_grad = 0;
                 }
-            } 
+            }
+            mol = 1; 
+                mol_grad = 0;
+                if (densities(i) > threshold_r) {
+                    mol = 0;
+                    mol_grad = 0;
+                } 
             /*
             if (i == 0 && j == 0){
                 std::cout << "Shapes: " << std::endl;
@@ -111,9 +123,9 @@ Eigen::MatrixXd surface_tension_hessian(
     const double rho_0,
     const double threshold,
     const double smooth_mol,
-    const Eigen::SparseMatrix<double> & B
+    const Eigen::SparseMatrix<double> & B_sparse
 ){
-    
+    /*
     Eigen::VectorXd grad = surface_tension_gradient<dim>(x, neighbors, h, m, fac, kappa, rho_0, threshold, smooth_mol, B);
     if(kappa == 0){
         return grad * grad.transpose();
@@ -121,54 +133,119 @@ Eigen::MatrixXd surface_tension_hessian(
     
 
     Eigen::MatrixXd hess = grad * grad.transpose()/kappa;
-    /* 
+     return hess;
+*/
+    
+    Eigen::MatrixXd B = -B_sparse.toDense()* rho_0;
+
+    double mol_k = 1000;
+
+    double threshold_r = rho_0 * threshold;
+    Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
+
     Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(x.size(), x.size());
     int idx = 0;
-    for (int i = 0; i < neighbors.size(); i+=dim){
-        for (int j = 0; j < neighbors[i].size(); j++){
-            idx = neighbors[i][j];
-            double mol_i, mol_grad_i, mol_grad2_i, mol_j, mol_grad_j, mol_grad2_j;
-            mol_i = 1/ (1 + exp(mol_k * (densities(i) - threshold_r)));
-            mol_grad_i = -mol_k * exp(mol_k * (densities(i) - threshold_r)) / ((1 + exp(mol_k * (densities(i) - threshold_r))) * (1 + exp(mol_k * (densities(i) - threshold_r))));
+    int n = x.size() / dim;
+
+    n = 5 + 2;
+
+    for (int i = 5; i < n; i+=dim){
+        for (int j = 5; j < n; j++){
+            
+            Eigen::MatrixXd hessian_ij = Eigen::MatrixXd::Zero(n, n);
+            double rho_i, rho_j, mol_i, mol_grad_i, mol_double_prime_i, u;
+            rho_i = densities(i);
+            rho_j = densities(neighbors[i][j]);
+            u = rho_i - rho_j;
+
+
+            mol_i = 1/ (1 + exp(mol_k * (rho_i - threshold_r)));
+            mol_grad_i = -mol_k * exp(mol_k * (rho_i - threshold_r)) / ((1 + exp(mol_k * (rho_i - threshold_r))) * (1 + exp(mol_k * (rho_i - threshold_r))));
+            mol_double_prime_i = -mol_k * (mol_k * exp(mol_k * (rho_i - threshold_r)) * (1 + exp(mol_k * (rho_i - threshold_r))) - 2 * exp(mol_k * (rho_i - threshold_r)) * exp(mol_k * (rho_i - threshold_r)))
+                / ((1 + exp(mol_k * (rho_i - threshold_r))) * (1 + exp(mol_k * (rho_i - threshold_r))) * (1 + exp(mol_k * (rho_i - threshold_r))));
+            
             if (!smooth_mol){
                 mol_i = 1; 
                 mol_grad_i = 0;
+                mol_double_prime_i = 0;
                 if (densities(i) > threshold_r) {
                     mol_i = 0;
                     mol_grad_i = 0;
+                    mol_double_prime_i = 0;
                 }
             }
 
-            mol_j = 1/ (1 + exp(mol_k * (densities(idx) - threshold_r)));
-            mod_grad_j = -mol_k * exp(mol_k * (densities(idx) - threshold_r)) / ((1 + exp(mol_k * (densities(idx) - threshold_r))) * (1 + exp(mol_k * (densities(idx) - threshold_r))));
-            if (!smooth_mol){
-                mol_j = 1; 
-                mol_grad_j = 0;
-                if (densities(idx) > threshold_r) {
-                    mol_j = 0;
-                    mol_grad_j = 0;
+            mol_i = 1; 
+            mol_grad_i = 0;
+            mol_double_prime_i = 0;
+            if (densities(i) > threshold_r) {
+                mol_i = 0;
+                mol_grad_i = 0;
+                mol_double_prime_i = 0;
+            }
+            
+            for (int k = 5; k < n; k++){
+                Eigen::Matrix<double, dim, 1> w_k = Eigen::Matrix<double, dim, 1>::Zero(dim);
+                Eigen::Matrix<double, dim, 1> z_k = Eigen::Matrix<double, dim, 1>::Zero();
+                Eigen::Matrix<double, dim, 1> w_diff_k = Eigen::Matrix<double, dim, 1>::Zero();
+                Eigen::Matrix<double, dim, 1> w_l = Eigen::Matrix<double, dim, 1>::Zero();
+                Eigen::Matrix<double, dim, 1> z_l = Eigen::Matrix<double, dim, 1>::Zero();
+                Eigen::Matrix<double, dim, 1> w_diff_l = Eigen::Matrix<double, dim, 1>::Zero();
+                Eigen::Matrix<double, dim, dim> hess_rho_diff = Eigen::Matrix<double, dim, dim>::Zero();
+                Eigen::Matrix<double, dim, dim> term1 = Eigen::Matrix<double, dim, dim>::Zero();
+                Eigen::Matrix<double, dim, dim> term2 = Eigen::Matrix<double, dim, dim>::Zero();
+
+
+                w_k = B.block<1, dim>(k, i * dim).transpose();
+                z_k = B.block<1, dim>(k, j * dim).transpose();
+                w_diff_k = w_k - z_k;
+
+                for (int l=5; l < n; l++){
+                    w_l = B.block<1, dim>(l, i * dim).transpose();
+                    z_l = B.block<1, dim>(l, j * dim).transpose();
+
+                    w_diff_l = w_l - z_l;
+                    const auto& xk = x.template segment<dim>(dim * k);
+                    const auto& xl = x.template segment<dim>(dim * l);
+                    double x_kl = (xk - xl).norm();
+
+
+                    Eigen::Matrix<double, dim, dim> hess_rho_i_kl;  // Hessian of rho_i with respect to x_k and x_l
+
+                    if ((i == k) && (std::find(neighbors[i].begin(), neighbors[i].end(), l) != neighbors[i].end())){
+                        hess_rho_i_kl = density_hessian<dim>(x.template segment<dim>(dim * k), x.template segment<dim>(dim * l), h, m, fac);
+                    }
+                    else if ((i == l) && (std::find(neighbors[i].begin(), neighbors[i].end(), k) != neighbors[i].end())){
+                        hess_rho_i_kl = density_hessian<dim>(x.template segment<dim>(dim * l), x.template segment<dim>(dim * k), h, m, fac);
+                    }
+                    
+                    Eigen::Matrix<double, dim, dim> hess_rho_j_kl;  // Hessian of rho_j with respect to x_k and x_l
+                    if ((j == k) && (std::find(neighbors[j].begin(), neighbors[j].end(), l) != neighbors[j].end())){
+                        hess_rho_j_kl = density_hessian<dim>(x.template segment<dim>(dim * k), x.template segment<dim>(dim * l), h, m, fac);
+                    }
+                    else if ((j == l) && (std::find(neighbors[j].begin(), neighbors[j].end(), k) != neighbors[j].end())){
+                        hess_rho_j_kl = density_hessian<dim>(x.template segment<dim>(dim * l), x.template segment<dim>(dim * k), h, m, fac);
+                    }
+                    hess_rho_diff = hess_rho_i_kl - hess_rho_j_kl;  // Hessian difference
+                
+                    // First term
+                    term1 = kappa * (w_diff_l * mol_i * w_diff_k.transpose() + u * mol_grad_i * w_l * w_diff_k.transpose() + u * mol_i * hess_rho_diff);
+
+                    // Second term
+                    term2 = 0.5 * kappa * (2 * u * w_diff_l * mol_grad_i * w_k.transpose() + u * u * (mol_double_prime_i * w_l * w_k.transpose() + mol_grad_i * hess_rho_i_kl));
+
+                    // Add the terms to the Hessian
+                    hessian.block<dim, dim>(dim*k, dim*l) = term1 + term2;
                 }
             }
-
-
-            hessian.block<dim, dim>(dim*i, dim*i) += (//dB here * (densities(i) - densities(j)) * mol_i
-                + (B.col(i) - B.col(idx)) * (B.col(i) - B.col(idx)) * mol_i
-                + (B.col(i) - B.col(idx)) * (densities(i) - densities(idx)) * mol_grad_i
-                +  dB.col(i) * mol_grad_i * (densities(i)-densities(idx)) * (densities(i)-densities(idx)) * 0.5
-                +  B.col(i) * B.col(i) * mol_grad2_i * (densities(i)-densities(idx)) * (densities(i)-densities(idx)) * 0.5
-                +  B.col(i) * mol_grad_i * (B.col(i) - B.col(idx)) * (densities(i)-densities(neighbors[i][j]))
-                );
-
-            hessian.block<dim, dim>(dim*i, dim*idx) += ;
-            hessian.block<dim, dim>(dim*idx, dim*i) += ;
-            hessian.block<dim, dim>(dim*idx, dim*idx) += ;
-        }
+            
+        } 
     }
-    */
+    
 
 
 
 
-    return hess;
+    return hessian;
 };
 
