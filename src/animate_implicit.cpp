@@ -177,6 +177,8 @@ void animate_implicit<2>(
         B.setFromTriplets(B_triplets.begin(), B_triplets.end());
     
 
+        std::cout << "B shape" << B.rows() << B.cols() << std::endl;
+        std::cout << n << std::endl;
         // Create spacing energy function and evaluate gradient and hessian
         auto spacing_energy = spacing_energy_func<2>(x, elements, h/2, m, fac, W_dq, k_spacing);
         std::cout << "Evaluate gradient and hessian" << std::endl;
@@ -195,12 +197,15 @@ void animate_implicit<2>(
             A += H_spacing * dt_sqr;
         }
         if (st_bool) {
+            std::cout << "surface tension " <<std::endl;
             A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).sparseView() * dt_sqr;
+            std::cout << "surface tension done" <<std::endl;
         }
         if (bounds_bool) {
             A += bounds_hessian<2>(x, low_bound, up_bound, barrier_width, k_barrier).sparseView() * dt_sqr;
         }
-        
+
+
         VectorXd b_inertial = -M * (x - x_hat);
         VectorXd b_psi = VectorXd::Zero(2 * n);
         VectorXd b_spacing = VectorXd::Zero(2 * n);
@@ -225,9 +230,9 @@ void animate_implicit<2>(
             b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, barrier_width, k_barrier);
             b += dt * dt * b_bounds;
         }
-
+        
         if (fd_check) {
-            fd::AccuracyOrder accuracy = fd::SECOND;
+            fd::AccuracyOrder accuracy = fd::FOURTH;
             /* 
             const auto bound_func = [&](const Eigen::VectorXd& x) -> double {
                 return bounds_energy<2>(x, low_bound, up_bound, barrier_width, k_barrier);
@@ -245,22 +250,22 @@ void animate_implicit<2>(
             std::cout << fH_bounds.row(0).head(10) << std::endl;
             std::cout << bounds_hessian<2>(x, low_bound, up_bound, barrier_width, k_barrier).row(0).head(10) << std::endl;
             */
-            const auto st_func = [&](const Eigen::VectorXd& x) -> double {
-                return surface_tension_energy<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
-            };
+            //const auto st_func = [&](const Eigen::VectorXd& x) -> double {
+            //    return surface_tension_energy<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
+            //};
 
-            Eigen::VectorXd fg_st;
-            fd::finite_gradient(x, st_func, fg_st, accuracy, 1.0e-7);
-            std::cout << "Surface Tension Gradient Error: " << (-b_st - fg_st).array().abs().maxCoeff() << std::endl;
-            std::cout << -b_st.head(10) << std::endl;
-            std::cout << fg_st.head(10) << std::endl;
+            //Eigen::VectorXd fg_st;
+            //fd::finite_gradient(x, st_func, fg_st, accuracy, 1.0e-7);
+            //std::cout << "Surface Tension Gradient Error: " << (-b_st - fg_st).array().abs().maxCoeff() << std::endl;
+            //std::cout << -b_st.head(10) << std::endl;
+            //std::cout << fg_st.head(10) << std::endl;
 
 
-            Eigen::MatrixXd fH_st;
-            fd::finite_hessian(x, st_func, fH_st, accuracy, 1.0e-5);
-            std::cout << "Surface Tension Hessian error: " << (fH_st - surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B)).norm() << std::endl;
-            std::cout << fH_st.row(0).head(10) << std::endl;
-            std::cout << surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).row(0).head(10) << std::endl;
+            //Eigen::MatrixXd fH_st;
+            //fd::finite_hessian(x, st_func, fH_st, accuracy, 1.0e-5);
+            //std::cout << "Surface Tension Hessian error: " << (fH_st - surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B)).norm() << std::endl;
+            //std::cout << fH_st.row(0).head(10) << std::endl;
+            //std::cout << surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).row(0).head(10) << std::endl;
 
             //const auto scorr = [&](const Eigen::VectorXd& x) -> double {
             //    //return spacing_energy_a<2>(x, neighbors, h/2, m, fac, W_dq, k_spacing); 
@@ -298,34 +303,40 @@ void animate_implicit<2>(
 
 
             // fd check for density gradients
-            Eigen::MatrixXd fg_density;
+            Eigen::VectorXd fg_density;
             const auto density_func = [&](const Eigen::VectorXd& x) {
                 return calculate_densities<2>(x, neighbors, h, m, fac)/rho_0;
             };
 
             Eigen::MatrixXd density_jacobian = -B;
 
-            fd::finite_jacobian(x, density_func, fg_density, accuracy, 1.0e-8);
-            std::cout << "Density Gradient Error: " << (density_jacobian - fg_density).array().abs().maxCoeff() << std::endl;
-            for (int i = 0; i < 10; i++){
-                std::cout << "fd: " << fg_density(i,2) << std::endl;
-                std::cout << "an: " << density_jacobian(i,2)<< std::endl;
-            }
+            //fd::finite_jacobian(x, density_func, fg_density, accuracy, 1.0e-8);
+            //std::cout << "Density Gradient Error: " << (density_jacobian - fg_density).array().abs().maxCoeff() << std::endl;
+            //for (int i = 0; i < 10; i++){
+            //    std::cout << "fd: " << fg_density(i,3) <<" ";
+            //    std::cout << "an: " << density_jacobian(i,3)<< std::endl;
+            //}
 
             const auto density_func_stencil = [&](const Eigen::VectorXd& x) {
                 return calculate_densities<2>(x, neighbors, h, m, fac)[0]/rho_0;
             };
+            fd::finite_gradient(x, density_func_stencil, fg_density, accuracy, 1.0e-8);
+            std::cout << "density gradient finite diff" << std::endl
+            << fg_density(0) << std::endl
+            << fg_density(1) << std::endl
+            << fg_density(2) << std::endl
+            << fg_density(3) << std::endl;
+
 
             Eigen::MatrixXd fh_density;
 
             fd::finite_hessian(x, density_func_stencil, fh_density, accuracy, 1.0e-8);
-            std::cout << "Density Hessian Error: " << density_hessian<2>(x.segment<2>(0), x.segment<2>(2), h, m, fac) << std::endl;
+            std::cout << "Density Hessian: " << std::endl << density_hessian<2>(x, neighbors, 0, 0, 1, h, m, fac, rho_0, B)/rho_0 << std::endl;
             
-            std::cout << "Density Hessian Error: " << fh_density.block<2,2>(0, 4) << std::endl;
-            std::cout << "Density Hessian Error: " << fh_density.block<2,2>(4, 0) << std::endl;
+            std::cout << "Density Hessian FD: " << std::endl << fh_density.block<4,4>(0, 0) << std::endl;
 
             //fd check for x_ij
-
+            /*
             Eigen::Vector4d x4 = x.segment<4>(0);
             const auto r = [&](const Eigen::Vector4d& x) {
                 return (x.segment<2>(0) - x.segment<2>(2)).norm() / h;
@@ -343,19 +354,18 @@ void animate_implicit<2>(
             Eigen::Matrix<double,2,2> drho_dx2;
             Eigen::Vector2d xij = x.segment<2>(0) - x.segment<2>(2);
 
-           double x1 = x(0);
-    double y1 = x(1);
-    double x2 = x(2);
-    double y2 = x(3);
+            double x1 = x(0);
+            double y1 = x(1);
+            double x2 = x(2);
+            double y2 = x(3);
 
-
-    drho_dx2(0, 0) = (pow(x1*2.0-x2*2.0,2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/4.0-1.0/sqrt(pow(x1-x2,2.0)+pow(y1-y2,2.0));
-    drho_dx2(1, 0) = ((x1*2.0-x2*2.0)*(y1*2.0-y2*2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/4.0;
-    drho_dx2(0, 1) = ((x1*2.0-x2*2.0)*(y1*2.0-y2*2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/4.0;
-    drho_dx2(1, 1) = (pow(y1*2.0-y2*2.0,2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/4.0-1.0/sqrt(pow(x1-x2,2.0)+pow(y1-y2,2.0)); 
+            drho_dx2(0, 0) = -1.0/sqrt(pow(x1-x2,2.0)+pow(y1-y2,2.0))/h+(pow(x1*2.0-x2*2.0,2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/(h*4.0); 
+            drho_dx2(1, 0) = ((x1*2.0-x2*2.0)*(y1*2.0-y2*2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/(h*4.0);
+            drho_dx2(0, 1) = ((x1*2.0-x2*2.0)*(y1*2.0-y2*2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/(h*4.0);
+            drho_dx2(1, 1) = -1.0/sqrt(pow(x1-x2,2.0)+pow(y1-y2,2.0))/h+(pow(y1*2.0-y2*2.0,2.0)*1.0/pow(pow(x1-x2,2.0)+pow(y1-y2,2.0),3.0/2.0))/(h*4.0);
 
             std::cout << "r hessian: " << drho_dx2 <<std::endl;
-
+            */
 
 
             
@@ -403,6 +413,9 @@ void animate_implicit<2>(
             exit(1);
         }
         VectorXd delta_x = solver.solve(b);
+        
+        std::cout << (A * x - b).norm() / b.norm() << std::endl;
+        std::cout << "delta x norm " << delta_x.norm() << std::endl;
 
         if (!primal){
             lambda = V_b_inv * H * V_b_inv * (J - Jx + B * delta_x) 
@@ -574,6 +587,13 @@ void animate_implicit<2>(
                 if (x(2*i+1) < curr_min) curr_min = x(2*i+1);
             }
             std::cout << "min y: " << curr_min << std::endl;
+            //std::ofstream output_file("output.txt", std::ios::app);
+            output_file << n << 2 << std::endl;
+
+            for (int i = 0; i < n; i++){
+                output_file << x(2*i) << " " << x(2*i+1) << std::endl;
+            }
+
             exit(1);
         } 
     }        

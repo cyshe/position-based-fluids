@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <Eigen/Sparse>
 
 template <int dim>
 Eigen::Matrix<double, dim*dim, 1> density_gradient(
@@ -20,11 +21,16 @@ Eigen::Matrix<double, dim, 1> density_gradient_element(
 
 template <int dim>
 Eigen::Matrix<double, dim, dim> density_hessian(
-    const Eigen::Matrix<double, dim, 1>& xi,
-    const Eigen::Matrix<double, dim, 1>& xj,
+    Eigen::VectorXd & x,
+    std::vector<std::vector<int>> neighbors,
+    const int i,
+    const int k,
+    const int l,
     const double h,
     const double m,
-    const double fac
+    const double fac,
+    const double rho_0,
+    const Eigen::SparseMatrix<double> & B_sparse 
 );
 
 template <int dim>

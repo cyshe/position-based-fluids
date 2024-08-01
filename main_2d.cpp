@@ -40,7 +40,7 @@ Vector2d lower_bound;
 Vector2d upper_bound;
 
 int iters = 100;
-double dt = 0.005;
+double dt = 0.003;
 double k_psi = 1;
 double k_s = 10;
 double k_st = 0.1;
@@ -60,7 +60,7 @@ void callback() {
   static bool smooth_mol = true;
   static bool psi_bool = false;
   static bool spacing_bool = true;
-  static bool st_bool = true;
+  static bool st_bool = false;
   static bool primal = true;
 
 

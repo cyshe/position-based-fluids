@@ -147,15 +147,15 @@ Eigen::MatrixXd surface_tension_hessian(
     int idx = 0;
     int n = x.size() / dim;
 
-    n = 5 + 2;
+    //n = 5 + 2;
 
-    for (int i = 5; i < n; i+=dim){
-        for (int j = 5; j < n; j++){
+    for (int i = 0; i < 2; i++){
+        for (int j = 0; j < 2; j++){
             
             Eigen::MatrixXd hessian_ij = Eigen::MatrixXd::Zero(n, n);
             double rho_i, rho_j, mol_i, mol_grad_i, mol_double_prime_i, u;
             rho_i = densities(i);
-            rho_j = densities(neighbors[i][j]);
+            rho_j = densities(j);
             u = rho_i - rho_j;
 
 
@@ -184,7 +184,7 @@ Eigen::MatrixXd surface_tension_hessian(
                 mol_double_prime_i = 0;
             }
             
-            for (int k = 5; k < n; k++){
+            for (int k = 0; k < 2; k++){
                 Eigen::Matrix<double, dim, 1> w_k = Eigen::Matrix<double, dim, 1>::Zero(dim);
                 Eigen::Matrix<double, dim, 1> z_k = Eigen::Matrix<double, dim, 1>::Zero();
                 Eigen::Matrix<double, dim, 1> w_diff_k = Eigen::Matrix<double, dim, 1>::Zero();
@@ -200,7 +200,7 @@ Eigen::MatrixXd surface_tension_hessian(
                 z_k = B.block<1, dim>(k, j * dim).transpose();
                 w_diff_k = w_k - z_k;
 
-                for (int l=5; l < n; l++){
+                for (int l=0; l < 2; l++){
                     w_l = B.block<1, dim>(l, i * dim).transpose();
                     z_l = B.block<1, dim>(l, j * dim).transpose();
 
@@ -211,23 +211,30 @@ Eigen::MatrixXd surface_tension_hessian(
 
 
                     Eigen::Matrix<double, dim, dim> hess_rho_i_kl;  // Hessian of rho_i with respect to x_k and x_l
-
-                    if ((i == k) && (std::find(neighbors[i].begin(), neighbors[i].end(), l) != neighbors[i].end())){
-                        hess_rho_i_kl = density_hessian<dim>(x.template segment<dim>(dim * k), x.template segment<dim>(dim * l), h, m, fac);
-                    }
-                    else if ((i == l) && (std::find(neighbors[i].begin(), neighbors[i].end(), k) != neighbors[i].end())){
-                        hess_rho_i_kl = density_hessian<dim>(x.template segment<dim>(dim * l), x.template segment<dim>(dim * k), h, m, fac);
-                    }
                     
+                    //std::cout << i << " i";
+                    hess_rho_i_kl = density_hessian<dim>(x, neighbors, i, k, l, h, m, fac, rho_0, B_sparse);
+
+                    //if ((i == k) && (std::find(neighbors[i].begin(), neighbors[i].end(), l) != neighbors[i].end())){
+                    //    hess_rho_i_kl = density_hessian<dim>(x.template segment<dim>(dim * k), x.template segment<dim>(dim * l), h, m, fac, rho_0, B_sparse);
+                    //}
+                    //else if ((i == l) && (std::find(neighbors[i].begin(), neighbors[i].end(), k) != neighbors[i].end())){
+                    //    hess_rho_i_kl = density_hessian<dim>(x.template segment<dim>(dim * l), x.template segment<dim>(dim * k), h, m, fac, rho_0, B_sparse);
+                    //}
+                    
+                    //std::cout << j << " j" << std::endl;
                     Eigen::Matrix<double, dim, dim> hess_rho_j_kl;  // Hessian of rho_j with respect to x_k and x_l
-                    if ((j == k) && (std::find(neighbors[j].begin(), neighbors[j].end(), l) != neighbors[j].end())){
-                        hess_rho_j_kl = density_hessian<dim>(x.template segment<dim>(dim * k), x.template segment<dim>(dim * l), h, m, fac);
-                    }
-                    else if ((j == l) && (std::find(neighbors[j].begin(), neighbors[j].end(), k) != neighbors[j].end())){
-                        hess_rho_j_kl = density_hessian<dim>(x.template segment<dim>(dim * l), x.template segment<dim>(dim * k), h, m, fac);
-                    }
+
+                    hess_rho_j_kl = density_hessian<dim>(x, neighbors, j, k, l, h, m, fac, rho_0, B_sparse);
+
+                    //if ((j == k) && (std::find(neighbors[j].begin(), neighbors[j].end(), l) != neighbors[j].end())){
+                    //    hess_rho_j_kl = density_hessian<dim>(x.template segment<dim>(dim * k), x.template segment<dim>(dim * l), h, m, fac, rho_0, B_sparse);
+                    //}
+                    //else if ((j == l) && (std::find(neighbors[j].begin(), neighbors[j].end(), k) != neighbors[j].end())){
+                    //    hess_rho_j_kl = density_hessian<dim>(x.template segment<dim>(dim * l), x.template segment<dim>(dim * k), h, m, fac, rho_0, B_sparse);
+                    //}
                     hess_rho_diff = hess_rho_i_kl - hess_rho_j_kl;  // Hessian difference
-                
+
                     // First term
                     term1 = kappa * (w_diff_l * mol_i * w_diff_k.transpose() + u * mol_grad_i * w_l * w_diff_k.transpose() + u * mol_i * hess_rho_diff);
 
