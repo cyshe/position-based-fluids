@@ -41,3 +41,10 @@ Eigen::VectorXd calculate_densities(
     const double m,
     const double fac
 );
+
+template <int dim>
+Eigen::Matrix<double, 1, 1> calculate_density_stencil(
+    const Eigen::Matrix<double, dim*2, 1>& x,
+    const double h,
+    const double m,
+    const double fac);

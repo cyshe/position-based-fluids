@@ -53,14 +53,14 @@ bool resetA = true;
 void callback() {
 
   static bool is_simulating = false; static bool write_sequence = false;
-  static bool fd_check = true;
+  static bool fd_check = false;
   static bool converge_check = true;
   static bool do_line_search = true;
   static bool bounds = true;
   static bool smooth_mol = true;
   static bool psi_bool = false;
   static bool spacing_bool = true;
-  static bool st_bool = false;
+  static bool st_bool = true;
   static bool primal = true;
 
 
@@ -198,7 +198,7 @@ int main(int argc, char *argv[]){
 
   // Initialize positions
 
-  double l = 15;
+  double l = 10;
 
   //rectangle
   numofparticles = l* 2 *l;
@@ -217,6 +217,7 @@ int main(int argc, char *argv[]){
   Eigen::Vector2d res(l,l);
   igl::grid(res,q);
   q.array() = 0.55 * 2 * q.array();
+  // q.array() = 0.1 * q.array();
 
   //std::cout << q.row(0) << q.row(399) << std::endl;
   // 

@@ -198,7 +198,17 @@ void animate_implicit<2>(
         }
         if (st_bool) {
             std::cout << "surface tension " <<std::endl;
+            std::chrono::time_point<std::chrono::system_clock> start, end;
+ 
+            start = std::chrono::system_clock::now();
             A += surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).sparseView() * dt_sqr;
+            end = std::chrono::system_clock::now();
+ 
+            std::chrono::duration<double> elapsed_seconds = end - start;
+            std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+ 
+            std::cout << "finished computation at " << std::ctime(&end_time)
+              << "elapsed time: " << elapsed_seconds.count() << "s\n";
             std::cout << "surface tension done" <<std::endl;
         }
         if (bounds_bool) {
@@ -250,22 +260,25 @@ void animate_implicit<2>(
             std::cout << fH_bounds.row(0).head(10) << std::endl;
             std::cout << bounds_hessian<2>(x, low_bound, up_bound, barrier_width, k_barrier).row(0).head(10) << std::endl;
             */
-            //const auto st_func = [&](const Eigen::VectorXd& x) -> double {
-            //    return surface_tension_energy<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
-            //};
+            const auto st_func = [&](const Eigen::VectorXd& x) -> double {
+                return surface_tension_energy<2>(x, neighbors, h, m, fac, k_st, rho_0 * st_threshold, smooth_mol);
+            };
 
-            //Eigen::VectorXd fg_st;
-            //fd::finite_gradient(x, st_func, fg_st, accuracy, 1.0e-7);
-            //std::cout << "Surface Tension Gradient Error: " << (-b_st - fg_st).array().abs().maxCoeff() << std::endl;
-            //std::cout << -b_st.head(10) << std::endl;
-            //std::cout << fg_st.head(10) << std::endl;
+            Eigen::VectorXd fg_st;
+            fd::finite_gradient(x, st_func, fg_st, accuracy, 1.0e-7);
+            std::cout << "Surface Tension Gradient Error: " << (-b_st - fg_st).array().abs().maxCoeff() << std::endl;
+            std::cout << -b_st.head(10) << std::endl;
+            std::cout << fg_st.head(10) << std::endl;
 
 
-            //Eigen::MatrixXd fH_st;
-            //fd::finite_hessian(x, st_func, fH_st, accuracy, 1.0e-5);
-            //std::cout << "Surface Tension Hessian error: " << (fH_st - surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B)).norm() << std::endl;
-            //std::cout << fH_st.row(0).head(10) << std::endl;
-            //std::cout << surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B).row(0).head(10) << std::endl;
+            Eigen::MatrixXd fH_st;
+            Eigen::MatrixXd H_st = surface_tension_hessian<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B);
+            fd::finite_hessian(x, st_func, fH_st, accuracy, 1.0e-5);
+            std::cout << "Surface Tension Hessian error: " << (fH_st - H_st).norm() << std::endl;
+            std::cout << "fH_st " << std::endl;
+            std::cout << fH_st << std::endl;
+            std::cout << "H_st " << std::endl;
+            std::cout << H_st << std::endl;
 
             //const auto scorr = [&](const Eigen::VectorXd& x) -> double {
             //    //return spacing_energy_a<2>(x, neighbors, h/2, m, fac, W_dq, k_spacing); 
@@ -316,11 +329,16 @@ void animate_implicit<2>(
             //    std::cout << "fd: " << fg_density(i,3) <<" ";
             //    std::cout << "an: " << density_jacobian(i,3)<< std::endl;
             //}
+            
+            const auto& xi = x.template segment<4>(2 * 0);
 
-            const auto density_func_stencil = [&](const Eigen::VectorXd& x) {
-                return calculate_densities<2>(x, neighbors, h, m, fac)[0]/rho_0;
+            std::cout << calculate_density_stencil<2>(xi, h, m, fac)/rho_0 << std::endl;
+            std::cout << calculate_density_stencil<2>(xi, h, m, fac)[0]/rho_0 << std::endl;
+
+            const auto density_func_stencil = [&](const Eigen::Matrix<double, 4, 1>& x) {
+                return calculate_density_stencil<2>(x, h, m, fac)[0]/rho_0;
             };
-            fd::finite_gradient(x, density_func_stencil, fg_density, accuracy, 1.0e-8);
+            fd::finite_gradient(xi, density_func_stencil, fg_density, accuracy, 1.0e-8);
             std::cout << "density gradient finite diff" << std::endl
             << fg_density(0) << std::endl
             << fg_density(1) << std::endl
@@ -330,10 +348,12 @@ void animate_implicit<2>(
 
             Eigen::MatrixXd fh_density;
 
-            fd::finite_hessian(x, density_func_stencil, fh_density, accuracy, 1.0e-8);
+            fd::finite_hessian(xi, density_func_stencil, fh_density, accuracy, 1.0e-5);
             std::cout << "Density Hessian: " << std::endl << density_hessian<2>(x, neighbors, 0, 0, 1, h, m, fac, rho_0, B)/rho_0 << std::endl;
             
-            std::cout << "Density Hessian FD: " << std::endl << fh_density.block<4,4>(0, 0) << std::endl;
+            std::cout << "Density Hessian FD: " << std::endl << fh_density << std::endl;
+
+            std::cout << (density_hessian<2>(x, neighbors, 0, 0, 1, h, m, fac, rho_0, B)/rho_0 - fh_density.block<2,2>(0, 2)).norm() << std::endl;
 
             //fd check for x_ij
             /*
@@ -533,7 +553,7 @@ void animate_implicit<2>(
         double residual = delta_x.lpNorm<Eigen::Infinity>() / dt;
         std::cout << "iteration: " << it << ", residual: " << residual << std::endl;
 
-        if (residual < 1e-3 && converge_check) {
+        if (residual < 1e-3) {
             std::cout << "converged" << std::endl;
             break;
         }
@@ -579,7 +599,7 @@ void animate_implicit<2>(
             grad_st(i, 1) = b_st(2*i+1);
         }
 
-        if (it == iters - 1){
+        if (it == iters - 1 && converge_check) {
             std::cout << "not converged" << std::endl;
             std::cout << "residual: " << residual << std::endl;
             double curr_min = 10;
