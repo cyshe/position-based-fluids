@@ -39,12 +39,12 @@ int numofparticles; //number of particles
 Vector2d lower_bound;
 Vector2d upper_bound;
 
-int iters = 100;
+int iters = 20;
 double dt = 0.003;
 double k_psi = 1;
 double k_s = 10;
 double k_st = 0.1;
-double st_threshold = 2.0;
+double st_threshold = 1.0;
 double rho_0 = 3.6;
 double h = 0.2;
 double fac = 10/7/M_PI;

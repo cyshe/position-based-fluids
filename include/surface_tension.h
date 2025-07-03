@@ -23,7 +23,7 @@ double surface_tension_energy(
     Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
 
     double energy = 0.0;
-    double mol_k = 1000; // kappa in smooth mollifier exponential 
+    double mol_k = 10; // kappa in smooth mollifier exponential 
     for (int i = 0; i < n; i++){
         for (int j = 0; j < neighbors[i].size(); j++){
             double mollifier;
@@ -62,7 +62,7 @@ Eigen::VectorXd surface_tension_gradient(
 
     Eigen::MatrixXd B = -B_sparse.toDense().transpose() * rho_0;
 
-    double mol_k = 1000;
+    double mol_k = 10;
     //std::cout << B.cols() << B.rows() << std::endl;
     //std::cout << grad.size() << std::endl;
     // Now compute surface tension gradient
@@ -93,10 +93,23 @@ Eigen::VectorXd surface_tension_gradient(
                 std::cout << (((B.col(i) - B.col(neighbors[i][j])))).rows() << std::endl;
             }
             */
+            if (isnan(densities(i)) || isnan(densities(neighbors[i][j]))){
+                std::cout << "Density is nan" << std::endl;
+            }
+            if (isnan(mol) || isnan(mol_grad)){
+                std::cout << "Mol is nan" << std::endl;
+                std::cout << "denominator " << (1 + exp(mol_k * (densities(i) - threshold_r))) << std::endl;
+                std::cout << "denominator " << ((mol_k * (densities(i) - threshold_r))) << std::endl;
+            }
+            if (isnan(B.col(i).norm()) || isnan(B.col(neighbors[i][j]).norm())){
+                std::cout << "B is nan" << std::endl;
+            }
             grad += kappa * (((B.col(i) - B.col(neighbors[i][j])) * (densities(i) - densities(neighbors[i][j])) * mol)
                 + B.col(i) * mol_grad * (densities(i)-densities(neighbors[i][j])) * (densities(i)-densities(neighbors[i][j])) *0.5);
         }
     }
+    std::cout << "densities norm " << densities.norm() << std::endl;
+    std::cout << "Gradient norm: " << grad.norm() << std::endl;
 
     return grad;
 };
@@ -126,7 +139,7 @@ Eigen::MatrixXd surface_tension_hessian(
 */
     
     Eigen::MatrixXd B = -B_sparse.toDense()* rho_0;
-    double mol_k = 1000;
+    double mol_k = 10;
 
     double threshold_r = rho_0 * threshold;
     Eigen::VectorXd densities = calculate_densities<dim>(x, neighbors, h, m, fac);
@@ -148,6 +161,7 @@ Eigen::MatrixXd surface_tension_hessian(
     Eigen::Matrix<double, dim, dim> hess_rho_diff = Eigen::Matrix<double, dim, dim>::Zero();
     Eigen::Matrix<double, dim, dim> term1 = Eigen::Matrix<double, dim, dim>::Zero();
     Eigen::Matrix<double, dim, dim> term2 = Eigen::Matrix<double, dim, dim>::Zero();
+    Eigen::Matrix<double, dim, dim> hess_subblock = Eigen::Matrix<double, dim, dim>::Zero();
     Eigen::Matrix<double, dim, dim> hess_rho_i_kl;  // Hessian of rho_i with respect to x_k a
     Eigen::Matrix<double, dim, dim> hess_rho_j_kl;  // Hessian of rho_j with respect to x_k and x_l
     
@@ -182,9 +196,7 @@ Eigen::MatrixXd surface_tension_hessian(
 
     // create new list of neighbors with only nonzero mol particles
     // sort neighbors list 
-    tbb::parallel_for(0, n, [&](int i) {
-        std::sort(neighbors[i].begin(), neighbors[i].end());
-    });
+    
 
     //n = 5 + 2;
     //tbb::parallel_for(0, n, [&](int i) {
@@ -222,10 +234,10 @@ Eigen::MatrixXd surface_tension_hessian(
 
         //TODO: std::set of neighbors i and j, k and l would be members of the set
         // take union of sorted loop
-        std::set<int> neighbors_i(neighbors[i].begin(), neighbors[i].end());
-        std::set<int> neighbors_j(neighbors[j_idx].begin(), neighbors[j_idx].end());
-        std::vector<int> neighbors_union(neighbors_i.size() + neighbors_j.size());
-        std::vector<int>::iterator union_it = std::set_union(neighbors_i.begin(), neighbors_i.end(), neighbors_j.begin(), neighbors_j.end(), neighbors_union.begin());
+        // std::set<int> neighbors_i(neighbors[i].begin(), neighbors[i].end());
+        // std::set<int> neighbors_j(neighbors[j_idx].begin(), neighbors[j_idx].end());
+        std::vector<int> neighbors_union(neighbors[i].size() + neighbors[j_idx].size());
+        std::vector<int>::iterator union_it = std::set_union(neighbors[i].begin(), neighbors[i].end(), neighbors[j_idx].begin(), neighbors[j_idx].end(), neighbors_union.begin());
         neighbors_union.resize(union_it - neighbors_union.begin());
 
         for (std::vector<int>::iterator k_it=neighbors_union.begin(); k_it!=neighbors_union.end(); ++k_it) {
@@ -269,12 +281,15 @@ Eigen::MatrixXd surface_tension_hessian(
                 term2 = 0.5 * kappa * (2 * u * w_diff_l * mol_grad_i * w_k.transpose() + u * u * (mol_double_prime_i * w_l * w_k.transpose() + mol_grad_i * hess_rho_i_kl));
 
                 // Add the terms to the Hessian
-                hessian.block<dim, dim>(dim * k, dim * l) += term1 + term2; //TODO: psd this if needed
+                if (k == l) {
+                    hess_subblock = term1 + term2;
+                    hessian.block<dim, dim>(dim * k, dim * l) += ipc::project_to_psd(hess_subblock); //TODO: psd this if needed
+                }
             }
         }
     }
     }
-    
+
 
 
     std::cout << "Hessian norm: " << hessian.norm() << std::endl; 

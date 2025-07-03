@@ -144,7 +144,9 @@ void animate_implicit<2>(
     for (int it = 0; it < iters; it++) {
         // Initialize new neighbor list
         std::vector<std::vector<int>> neighbors = find_neighbors_compact<2>(x, h);
-
+        tbb::parallel_for(0, n, [&](int i) {
+        std::sort(neighbors[i].begin(), neighbors[i].end());
+        });
 
         // Create list of neighbor pairs (as elements for TinyAD)
         std::vector<Eigen::Vector2i> elements;
@@ -226,19 +228,22 @@ void animate_implicit<2>(
         if (psi_bool) {
             b_psi = -psi_gradient<2>(x, J, neighbors, V_b_inv, B, h, m, fac, kappa, rho_0 * st_threshold, rho_0, primal);
             b += dt * dt * b_psi;
-            //std::cout << "b_psi norm: " << b_psi.norm() << std::endl;
+            std::cout << "b_psi norm: " << b_psi.norm() << std::endl;
         }
         if (spacing_bool) {
             b_spacing = -g_spacing;
             b += dt * dt * b_spacing;
+            std::cout << "b_spacing norm: " << b_spacing.norm() << std::endl;
         }
         if (st_bool) {
             b_st = -surface_tension_gradient<2>(x, neighbors, h, m, fac, k_st, rho_0, st_threshold, smooth_mol, B);
             b += dt * dt * b_st;
+            std::cout << "b_st norm: " << b_st.norm() << std::endl;
         }
         if (bounds_bool) {
             b_bounds = -bounds_gradient<2>(x, low_bound, up_bound, barrier_width, k_barrier);
             b += dt * dt * b_bounds;
+            std::cout << "b_bounds norm: " << b_bounds.norm() << std::endl;
         }
         
         if (fd_check) {
@@ -435,6 +440,7 @@ void animate_implicit<2>(
         VectorXd delta_x = solver.solve(b);
         
         std::cout << (A * x - b).norm() / b.norm() << std::endl;
+        std::cout << "b norm " << b.norm() << std::endl;
         std::cout << "delta x norm " << delta_x.norm() << std::endl;
 
         if (!primal){

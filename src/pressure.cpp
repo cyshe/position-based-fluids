@@ -13,7 +13,7 @@ double mollifier_psi(
     //return 1;
     double mollifier;
     double mol_k = 10;
-    return 1/ (1 + exp(10 * (density - threshold)));
+    return 1/ (1 + exp(10 * -(density - threshold)));
     if (density >  1.5 * threshold){
         mollifier = 1;
     }
